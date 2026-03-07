@@ -656,6 +656,7 @@ function gameLoop() {
                 const aiAbsSpeed = 35 + Math.random() * 35;
                 const ai = createAiCar(lane, 0);
                 ai.absSpeed = aiAbsSpeed;
+                ai.originalSpeed = aiAbsSpeed; // Spara original-farten
                 ai.mesh.position.z = rowZ + (Math.random() - 0.5) * 4;
                 aiCars.push(ai);
                 carsPlaced++;
@@ -667,6 +668,13 @@ function gameLoop() {
 
     for (let i = aiCars.length - 1; i >= 0; i--) {
         const ai = aiCars[i];
+
+        // AI-bilen decelererar gradvis tillbaka till sin original-fart efter krock
+        if (ai.hitOnce && ai.absSpeed > ai.originalSpeed) {
+            ai.absSpeed -= 0.3; // Saktar ner ~18 km/h per sekund
+            if (ai.absSpeed < ai.originalSpeed) ai.absSpeed = ai.originalSpeed;
+        }
+
         // Relativ rörelse baserad på absoluta hastigheter
         const relativeSpeed = (speed - ai.absSpeed) * 0.004;
         ai.mesh.position.z += relativeSpeed;
@@ -677,10 +685,10 @@ function gameLoop() {
             playSound('crash');
             createExplosion(car.position.x, 1, ai.mesh.position.z, 0xff6600);
 
-            // Enkel swap: vi får AI:ns fart, AI:n får vår fart
+            // Swap: vi får AI:ns fart, AI:n får vår fart (men decelererar sedan)
             const ourOldSpeed = speed;
             speed = ai.absSpeed;       // Vi saktas ner
-            ai.absSpeed = ourOldSpeed;  // AI:n skjuts framåt
+            ai.absSpeed = ourOldSpeed;  // AI:n skjuts framåt (tillfälligt!)
             ai.hitOnce = true;
         }
 
