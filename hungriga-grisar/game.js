@@ -402,8 +402,7 @@ function gameLoop() {
 }
 
 function handleInput(e) {
-    // Ignorera tryck på helskärmsknappen, hjälpknappen eller tillbakaknappen
-    if (e.target.id === 'fullscreen-btn' || (e.target.closest && e.target.closest('#fullscreen-btn'))) return;
+    // Ignorera tryck på hjälpknappen eller tillbakaknappen
     if (e.target.id === 'help-btn' || (e.target.closest && e.target.closest('#help-btn'))) return;
     if (e.target.id === 'back-btn' || (e.target.closest && e.target.closest('#back-btn'))) return;
 
@@ -446,29 +445,6 @@ function handleInput(e) {
 window.addEventListener('keydown', handleInput);
 window.addEventListener('touchstart', handleInput, { passive: false });
 window.addEventListener('mousedown', handleInput);
-
-const fullscreenBtn = document.getElementById('fullscreen-btn');
-fullscreenBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    const elem = document.documentElement;
-    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-        if (elem.requestFullscreen) {
-            elem.requestFullscreen();
-        } else if (elem.webkitRequestFullscreen) { /* Safari */
-            elem.webkitRequestFullscreen();
-        } else if (elem.msRequestFullscreen) { /* IE11 */
-            elem.msRequestFullscreen();
-        }
-    } else {
-        if (document.exitFullscreen) {
-            document.exitFullscreen();
-        } else if (document.webkitExitFullscreen) { /* Safari */
-            document.webkitExitFullscreen();
-        } else if (document.msExitFullscreen) { /* IE11 */
-            document.msExitFullscreen();
-        }
-    }
-});
 
 const helpBtn = document.getElementById('help-btn');
 helpBtn.addEventListener('click', (e) => {

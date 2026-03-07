@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Galna Bilar</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -11,7 +14,6 @@
     <a href="../index.html" id="back-btn" title="Tillbaka till Spelhålan">⬅️ Tillbaka</a>
     <div id="top-buttons">
         <button id="help-btn" title="Hjälp">❓</button>
-        <button id="fullscreen-btn" title="Helskärm">🔲</button>
     </div>
     <div id="game-container">
         <div id="game-canvas-wrapper"></div>
@@ -22,6 +24,7 @@
         <div id="score-display">⭐ <span id="score">0 / 100</span></div>
         <div id="speed-display">0 km/h</div>
     </div>
+    <!-- Lägg till query param för cache busting om nödvändigt i prod, men no-cache headern hjälper -->
     <script src="game.js"></script>
 </body>
 </html>

@@ -435,7 +435,6 @@ function gameLoop() {
 }
 
 function handleInput(e) {
-    if (e.target.id === 'fullscreen-btn' || (e.target.closest && e.target.closest('#fullscreen-btn'))) return;
     if (e.target.id === 'help-btn' || (e.target.closest && e.target.closest('#help-btn'))) return;
     if (e.target.id === 'back-btn' || (e.target.closest && e.target.closest('#back-btn'))) return;
     
@@ -478,30 +477,6 @@ function handleInput(e) {
 // Mus/touch
 window.addEventListener('mousedown', handleInput);
 window.addEventListener('touchstart', handleInput, { passive: false });
-
-// Helskärm
-const fullscreenBtn = document.getElementById('fullscreen-btn');
-fullscreenBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    const elem = document.documentElement;
-    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-        if (elem.requestFullscreen) {
-            elem.requestFullscreen();
-        } else if (elem.webkitRequestFullscreen) { 
-            elem.webkitRequestFullscreen();
-        } else if (elem.msRequestFullscreen) { 
-            elem.msRequestFullscreen();
-        }
-    } else {
-        if (document.exitFullscreen) {
-            document.exitFullscreen();
-        } else if (document.webkitExitFullscreen) { 
-            document.webkitExitFullscreen();
-        } else if (document.msExitFullscreen) { 
-            document.msExitFullscreen();
-        }
-    }
-});
 
 const helpBtn = document.getElementById('help-btn');
 helpBtn.addEventListener('click', (e) => {

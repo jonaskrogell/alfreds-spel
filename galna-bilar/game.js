@@ -741,6 +741,35 @@ function gameLoop() {
             speed = ai.absSpeed;       // Vi saktas ner
             ai.absSpeed = ourOldSpeed;  // AI:n skjuts framåt (tillfälligt!)
             ai.hitOnce = true;
+            ai.hitOnce = true;
+        }
+
+        // Krock mellan AI-bilar (om denna bil ligger bakom en annan bil i samma fil och är snabbare)
+        for (let j = 0; j < aiCars.length; j++) {
+            if (i !== j) {
+                const otherAi = aiCars[j];
+                // otherAi är framför ai (mindre z i vår värld där mer negativ är längre bort framför oss)
+                // Det vill säga otherAi.mesh.position.z < ai.mesh.position.z (other är framför)
+                // Men om vi kör z från -130 fram mot oss, så är otherAi framför om den har mindre z.
+                // Vänta, bilar spawnas vid -130 och rör sig MOT oss (z ökar mot 0).
+                // Så en bil är FRAMFÖR (närmare horisonten) om dess z-värde är LÄGRE än vår.
+                if (otherAi.lane === ai.lane && 
+                    otherAi.mesh.position.z < ai.mesh.position.z &&
+                    otherAi.mesh.position.z > ai.mesh.position.z - 6) {
+                    
+                    // Om bilen bakom vill åka fortare än bilen framför
+                    if (ai.absSpeed > otherAi.absSpeed) {
+                        playSound('crash');
+                        createExplosion(LANE_POSITIONS[ai.lane], 1, otherAi.mesh.position.z, 0xaaaaaa);
+                        
+                        // Swap farten för att ge samma effekt
+                        const aiOldSpeed = ai.absSpeed;
+                        ai.absSpeed = otherAi.absSpeed; // bromsar in
+                        otherAi.absSpeed = aiOldSpeed; // bilen framför får en skjuts
+                        otherAi.hitOnce = true; // startar ev deceleration
+                    }
+                }
+            }
         }
 
         // Kontinuerlig blockering: kan inte köra igenom i samma fil
@@ -836,7 +865,6 @@ function getInputLane(e) {
 }
 
 function handleInput(e) {
-    if (e.target.id === 'fullscreen-btn' || (e.target.closest && e.target.closest('#fullscreen-btn'))) return;
     if (e.target.id === 'help-btn' || (e.target.closest && e.target.closest('#help-btn'))) return;
     if (e.target.id === 'back-btn' || (e.target.closest && e.target.closest('#back-btn'))) return;
 
@@ -883,18 +911,6 @@ window.addEventListener('touchstart', handleInput, { passive: false });
 window.addEventListener('mousedown', handleInput);
 
 // Knappar
-document.getElementById('fullscreen-btn').addEventListener('click', (e) => {
-    e.stopPropagation();
-    const el = document.documentElement;
-    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-        if (el.requestFullscreen) el.requestFullscreen();
-        else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
-    } else {
-        if (document.exitFullscreen) document.exitFullscreen();
-        else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
-    }
-});
-
 document.getElementById('help-btn').addEventListener('click', (e) => {
     e.stopPropagation(); initAudio();
     if ('speechSynthesis' in window) {
