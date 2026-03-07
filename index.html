@@ -37,6 +37,13 @@
             box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
         }
 
+        #menu-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+
         h1 {
             color: #FF1493;
             font-size: clamp(40px, 10vw, 80px);
@@ -121,35 +128,70 @@
         .floating {
             animation: float 6s ease-in-out infinite;
         }
+
+        #game-iframe {
+            display: none;
+            width: 100vw;
+            height: 100vh;
+            border: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 50;
+        }
     </style>
 </head>
 <body>
     <button id="fullscreen-btn">◻️</button>
 
-    <h1 class="floating">🌟 Alfreds Spelhåla 🌟</h1>
-    
-    <div class="games-container">
-        <!-- Spel 1 -->
-        <a href="hungriga-grisar/index.html" class="game-card">
-            <div class="game-icon">🐷</div>
-            <div class="game-title">Hungriga<br>Grisar</div>
-        </a>
+    <div id="menu-container">
+        <h1 class="floating">🌟 Alfreds Spelhåla 🌟</h1>
+        
+        <div class="games-container">
+            <!-- Spel 1 -->
+            <a href="javascript:void(0)" onclick="openGame('hungriga-grisar/index.html')" class="game-card">
+                <div class="game-icon">🐷</div>
+                <div class="game-title">Hungriga<br>Grisar</div>
+            </a>
 
-        <!-- Spel 2 -->
-        <a href="galna-bilar/index.html" class="game-card">
-            <div class="game-icon">🏎️</div>
-            <div class="game-title">Galna<br>Bilar</div>
-        </a>
+            <!-- Spel 2 -->
+            <a href="javascript:void(0)" onclick="openGame('galna-bilar/index.html')" class="game-card">
+                <div class="game-icon">🏎️</div>
+                <div class="game-title">Galna<br>Bilar</div>
+            </a>
 
-        <!-- Spel 3 -->
-        <a href="dino-mysteriet/index.html" class="game-card">
-            <div class="game-icon">🦖</div>
-            <div class="game-title">Dino<br>Mysteriet</div>
-        </a>
+            <!-- Spel 3 -->
+            <a href="javascript:void(0)" onclick="openGame('dino-mysteriet/index.html')" class="game-card">
+                <div class="game-icon">🦖</div>
+                <div class="game-title">Dino<br>Mysteriet</div>
+            </a>
+        </div>
     </div>
 
+    <iframe id="game-iframe" src=""></iframe>
+
     <script>
-        document.getElementById('fullscreen-btn').addEventListener('click', (e) => {
+        const menuContainer = document.getElementById('menu-container');
+        const gameIframe = document.getElementById('game-iframe');
+        const fullscreenBtn = document.getElementById('fullscreen-btn');
+
+        function openGame(url) {
+            gameIframe.src = url;
+            gameIframe.style.display = 'block';
+            menuContainer.style.display = 'none';
+            fullscreenBtn.style.display = 'none';
+        }
+
+        window.addEventListener('message', (e) => {
+            if (e.data === 'goBack') {
+                gameIframe.src = '';
+                gameIframe.style.display = 'none';
+                menuContainer.style.display = 'flex';
+                fullscreenBtn.style.display = 'flex';
+            }
+        });
+
+        fullscreenBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             const el = document.documentElement;
             if (!document.fullscreenElement && !document.webkitFullscreenElement) {

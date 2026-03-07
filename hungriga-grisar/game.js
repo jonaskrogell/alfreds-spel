@@ -465,3 +465,12 @@ helpBtn.addEventListener('click', (e) => {
         window.speechSynthesis.speak(msg);
     }
 });
+
+document.getElementById('back-btn').addEventListener('click', (e) => {
+    e.preventDefault();
+    if (window.parent !== window) {
+        window.parent.postMessage('goBack', '*');
+    } else {
+        window.location.href = '../index.html';
+    }
+});

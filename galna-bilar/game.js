@@ -930,4 +930,13 @@ document.getElementById('help-btn').addEventListener('click', (e) => {
     }
 });
 
+document.getElementById('back-btn').addEventListener('click', (e) => {
+    e.preventDefault();
+    if (window.parent !== window) {
+        window.parent.postMessage('goBack', '*');
+    } else {
+        window.location.href = '../index.html';
+    }
+});
+
 renderer.render(scene, camera);
