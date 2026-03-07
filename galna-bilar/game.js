@@ -616,18 +616,34 @@ function gameLoop() {
     // =========== AI-bilar ===========
     const now = Date.now();
     if (aiCars.length === 0 && now - lastAiCarTime > 20000) {
-        // Spawna 2-3 AI-bilar i olika filer
-        const numCars = 2 + Math.floor(Math.random() * 2); // 2 eller 3
-        const usedLanes = [];
-        for (let c = 0; c < numCars && usedLanes.length < 3; c++) {
-            let lane;
-            do { lane = Math.floor(Math.random() * 3); } while (usedLanes.includes(lane));
-            usedLanes.push(lane);
-            const speedFactor = 0.5 + Math.random() * 0.2; // 50-70% av vår fart
-            const ai = createAiCar(lane, speedFactor);
-            // Sprida ut dem lite i avstånd
-            ai.mesh.position.z = -130 - c * 15;
-            aiCars.push(ai);
+        // Spawna 2-5 AI-bilar i rader (max 2 per rad = alltid 1 fri fil)
+        const numCars = 2 + Math.floor(Math.random() * 4); // 2-5
+        const rows = []; // Varje rad: { z, lanes: [] }
+        let carsPlaced = 0;
+        let rowZ = -130;
+
+        while (carsPlaced < numCars) {
+            // Hur många i denna rad? Max 2 för att alltid lämna en fri fil
+            const remaining = numCars - carsPlaced;
+            const inThisRow = Math.min(remaining, Math.random() < 0.5 ? 1 : 2);
+
+            // Välj filer för denna rad
+            const availableLanes = [0, 1, 2];
+            const rowLanes = [];
+            for (let c = 0; c < inThisRow; c++) {
+                const idx = Math.floor(Math.random() * availableLanes.length);
+                rowLanes.push(availableLanes.splice(idx, 1)[0]);
+            }
+
+            rowLanes.forEach(lane => {
+                const speedFactor = 0.45 + Math.random() * 0.25; // 45-70%
+                const ai = createAiCar(lane, speedFactor);
+                ai.mesh.position.z = rowZ + (Math.random() - 0.5) * 4;
+                aiCars.push(ai);
+                carsPlaced++;
+            });
+
+            rowZ -= 18 - Math.random() * 6; // 12-18 enheter mellan rader
         }
         playSound('honk');
     }
@@ -637,18 +653,30 @@ function gameLoop() {
         const aiMoveSpeed = moveSpeed * ai.speedFactor;
         ai.mesh.position.z += moveSpeed - aiMoveSpeed;
 
-        // Blockera spelaren: om vi är i samma fil och bakom AI-bilen, matcha dess fart
-        if (!ai.passed && ai.lane === currentLane && ai.mesh.position.z > -3 && ai.mesh.position.z < 6) {
-            // Begränsa vår fart till AI-bilens fart (vi kan inte köra igenom)
-            const aiActualSpeed = speed * ai.speedFactor;
-            if (speed > aiActualSpeed) {
-                if (!ai.hitOnce) {
-                    playSound('crash');
-                    createExplosion(car.position.x, 1, 2, 0xff6600);
-                    ai.hitOnce = true;
-                }
-                speed = aiActualSpeed; // Matcha AI-bilens fart
-            }
+        // Om AI-bilen fått en boost (efter krock), rör den sig snabbare
+        if (ai.boosted) {
+            ai.mesh.position.z += ai.boostSpeed * 0.004;
+            ai.boostSpeed *= 0.98; // Avta gradvis
+            if (ai.boostSpeed < 5) ai.boosted = false;
+        }
+
+        // Kollision: när vi är i samma fil och nära
+        if (!ai.passed && !ai.hitOnce && ai.lane === currentLane &&
+            ai.mesh.position.z > -2 && ai.mesh.position.z < 5) {
+            playSound('crash');
+            createExplosion(car.position.x, 1, ai.mesh.position.z, 0xff6600);
+
+            // Realistisk fysik: AI-bilen får vår extra fart som boost
+            const ourSpeedBefore = speed;
+            const aiSpeed = speed * ai.speedFactor;
+
+            // Vi hamnar på AI-bilens tidigare fart
+            speed = aiSpeed;
+
+            // AI-bilen skjuts framåt (får vår överflödiga fart)
+            ai.boosted = true;
+            ai.boostSpeed = ourSpeedBefore - aiSpeed;
+            ai.hitOnce = true;
         }
 
         // Passerad (vi bytte fil och körde om!)
@@ -657,11 +685,11 @@ function gameLoop() {
         }
 
         // Ta bort och starta 20s-timer EFTER att sista bilen försvinner
-        if (ai.mesh.position.z > 35) {
+        if (ai.mesh.position.z > 40) {
             scene.remove(ai.mesh);
             aiCars.splice(i, 1);
             if (aiCars.length === 0) {
-                lastAiCarTime = Date.now(); // 20s börjar NU
+                lastAiCarTime = Date.now();
             }
         }
     }
