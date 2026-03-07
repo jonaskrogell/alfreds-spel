@@ -338,30 +338,81 @@ function createWindmill(x, z) {
     return g;
 }
 
+// ===================== KOSSA =====================
+function createCow(x, z) {
+    const g = new THREE.Group();
+    const matWhite = new THREE.MeshLambertMaterial({ color: 0xffffff });
+    const matBlack = new THREE.MeshLambertMaterial({ color: 0x222222 });
+    const matPink = new THREE.MeshLambertMaterial({ color: 0xffaaaa });
+
+    // Kropp
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.8, 2.0), matWhite);
+    body.position.y = 0.8; body.castShadow = true; g.add(body);
+
+    // Fläckar
+    const spot1 = new THREE.Mesh(new THREE.BoxGeometry(1.22, 0.6, 0.6), matBlack);
+    spot1.position.set(0, 0.8, 0.3); g.add(spot1);
+    const spot2 = new THREE.Mesh(new THREE.BoxGeometry(1.22, 0.4, 0.5), matBlack);
+    spot2.position.set(0, 0.9, -0.5); g.add(spot2);
+
+    // Huvud
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.7, 0.8), matWhite);
+    head.position.set(0, 1.2, 1.0); head.castShadow = true; g.add(head);
+
+    // Mule (rosa)
+    const mule = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.4, 0.3), matPink);
+    mule.position.set(0, 1.05, 1.3); g.add(mule);
+
+    // Öron
+    [-0.4, 0.4].forEach(ex => {
+        const ear = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.2, 0.1), matWhite);
+        ear.position.set(ex, 1.4, 0.8); g.add(ear);
+    });
+
+    // Ben
+    [[-0.4, 0.6], [0.4, 0.6], [-0.4, -0.6], [0.4, -0.6]].forEach(pos => {
+        const leg = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.8, 0.2), matWhite);
+        leg.position.set(pos[0], 0.4, pos[1]); leg.castShadow = true; g.add(leg);
+    });
+
+    g.position.set(x, 0, z);
+    // Slumpmässig riktning som kossan står åt
+    g.rotation.y = Math.random() * Math.PI * 2;
+    scene.add(g);
+    return g;
+}
+
 // Placera objekt längs vägen
 for (let z = 0; z > -ROAD_LENGTH; z -= 8) {
     const leftX = -ROAD_W / 2 - 4 - Math.random() * 6;
     const rightX = ROAD_W / 2 + 4 + Math.random() * 6;
     const r = Math.random();
 
-    if (r < 0.6) {
+    if (r < 0.5) {
         // Träd (vanligast)
         trees3D.push(createTree(leftX, z + Math.random() * 4));
         trees3D.push(createTree(rightX, z + Math.random() * 4));
-    } else if (r < 0.75) {
+    } else if (r < 0.65) {
         // Hus
         const side = Math.random() < 0.5 ? leftX - 2 : rightX + 2;
         roadside3D.push(createHouse(side, z));
         trees3D.push(createTree(Math.random() < 0.5 ? leftX : rightX, z + 4));
-    } else if (r < 0.88) {
+    } else if (r < 0.75) {
         // Bondgård
         const side = Math.random() < 0.5 ? leftX - 3 : rightX + 3;
         roadside3D.push(createBarn(side, z));
-    } else {
+    } else if (r < 0.85) {
         // Vindsnurra
         const side = Math.random() < 0.5 ? leftX - 5 : rightX + 5;
         roadside3D.push(createWindmill(side, z));
         trees3D.push(createTree(Math.random() < 0.5 ? leftX : rightX, z + 3));
+    } else {
+        // Kor (Koflock med 2-4 kor)
+        const side = Math.random() < 0.5 ? leftX - 3 : rightX + 3;
+        const numCows = 2 + Math.floor(Math.random() * 3);
+        for (let c = 0; c < numCows; c++) {
+            roadside3D.push(createCow(side + (Math.random() - 0.5) * 6, z + (Math.random() - 0.5) * 6));
+        }
     }
 }
 
