@@ -656,27 +656,34 @@ function gameLoop() {
         // Om AI-bilen fått en boost (efter krock), rör den sig snabbare
         if (ai.boosted) {
             ai.mesh.position.z += ai.boostSpeed * 0.004;
-            ai.boostSpeed *= 0.98; // Avta gradvis
-            if (ai.boostSpeed < 5) ai.boosted = false;
+            ai.boostSpeed *= 0.97;
+            if (ai.boostSpeed < 3) ai.boosted = false;
         }
 
-        // Kollision: när vi är i samma fil och nära
+        // Första krock: spela ljud, ge AI boost
         if (!ai.passed && !ai.hitOnce && ai.lane === currentLane &&
             ai.mesh.position.z > -2 && ai.mesh.position.z < 5) {
             playSound('crash');
             createExplosion(car.position.x, 1, ai.mesh.position.z, 0xff6600);
 
-            // Realistisk fysik: AI-bilen får vår extra fart som boost
             const ourSpeedBefore = speed;
             const aiSpeed = speed * ai.speedFactor;
 
-            // Vi hamnar på AI-bilens tidigare fart
             speed = aiSpeed;
 
-            // AI-bilen skjuts framåt (får vår överflödiga fart)
             ai.boosted = true;
             ai.boostSpeed = ourSpeedBefore - aiSpeed;
             ai.hitOnce = true;
+        }
+
+        // KONTINUERLIG BLOCKERING: efter krock, håll spelaren bakom
+        // så länge de är i samma fil och AI-bilen är framför
+        if (ai.hitOnce && !ai.passed && ai.lane === currentLane && ai.mesh.position.z < 8) {
+            // Begränsa vår fart så vi inte kan köra igenom
+            const aiEffectiveSpeed = speed * ai.speedFactor;
+            if (speed > aiEffectiveSpeed) {
+                speed = aiEffectiveSpeed;
+            }
         }
 
         // Passerad (vi bytte fil och körde om!)
@@ -684,7 +691,7 @@ function gameLoop() {
             ai.passed = true;
         }
 
-        // Ta bort och starta 20s-timer EFTER att sista bilen försvinner
+        // Ta bort
         if (ai.mesh.position.z > 40) {
             scene.remove(ai.mesh);
             aiCars.splice(i, 1);
