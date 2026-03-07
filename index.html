@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alfreds Spel ✨</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #FFDEE9 0%, #B5FFFC 100%);
+            font-family: 'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', cursive, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            color: #FF1493;
+            font-size: clamp(40px, 10vw, 80px);
+            text-shadow: 3px 3px 0 #fff, 5px 5px 10px rgba(0,0,0,0.2);
+            margin-top: 50px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .games-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 40px;
+            padding: 20px;
+            max-width: 1200px;
+        }
+
+        .game-card {
+            background-color: white;
+            border-radius: 30px;
+            width: 300px;
+            height: 350px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            color: #333;
+            border: 8px solid #FFC0CB;
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .game-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0) 70%);
+            transform: rotate(45deg);
+            pointer-events: none;
+        }
+
+        .game-card:hover {
+            transform: translateY(-15px) scale(1.05);
+            box-shadow: 0 25px 50px rgba(0,0,0,0.25);
+            border-color: #FF69B4;
+        }
+
+        .game-icon {
+            font-size: 100px;
+            margin-bottom: 20px;
+            filter: drop-shadow(0 10px 10px rgba(0,0,0,0.1));
+            transition: transform 0.3s;
+        }
+
+        .game-card:hover .game-icon {
+            transform: scale(1.1) rotate(5deg);
+        }
+
+        .game-title {
+            font-size: 32px;
+            font-weight: bold;
+            text-align: center;
+            padding: 0 10px;
+            color: #FF4500;
+            text-shadow: 1px 1px 0 #fff;
+        }
+
+        /* Coming soon card styling */
+        .game-card.coming-soon {
+            border-color: #D3D3D3;
+            background-color: #F8F8F8;
+            cursor: default;
+        }
+        
+        .game-card.coming-soon:hover {
+            transform: none;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+        }
+        
+        .game-card.coming-soon .game-title {
+            color: #A9A9A9;
+        }
+        
+        .game-card.coming-soon .game-icon {
+            filter: grayscale(100%) opacity(0.5);
+        }
+
+        .coming-soon-badge {
+            position: absolute;
+            top: 20px;
+            right: -30px;
+            background: #FFD700;
+            color: #000;
+            padding: 5px 30px;
+            font-weight: bold;
+            transform: rotate(45deg);
+            font-size: 14px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        @keyframes float {
+            0% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(2deg); }
+            100% { transform: translateY(0px) rotate(0deg); }
+        }
+
+        .floating {
+            animation: float 6s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body>
+    <h1 class="floating">🌟 Alfreds Spelhåla 🌟</h1>
+    
+    <div class="games-container">
+        <!-- Spel 1 -->
+        <a href="hungriga-grisar/index.html" class="game-card">
+            <div class="game-icon">🐷</div>
+            <div class="game-title">Hungriga<br>Grisar</div>
+        </a>
+
+        <!-- Spel 2 -->
+        <a href="galna-bilar/index.html" class="game-card">
+            <div class="game-icon">🏎️</div>
+            <div class="game-title">Galna<br>Bilar</div>
+        </a>
+
+        <!-- Spel 3 -->
+        <a href="dino-mysteriet/index.html" class="game-card">
+            <div class="game-icon">🦖</div>
+            <div class="game-title">Dino<br>Mysteriet</div>
+        </a>
+    </div>
+</body>
+</html>

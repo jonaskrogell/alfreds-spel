@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hungriga Grisar</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <a href="../index.html" id="back-btn" title="Tillbaka till Spelhålan">⬅️ Tillbaka</a>
+    <div id="top-buttons">
+        <button id="help-btn" title="Hjälp">❓</button>
+        <button id="fullscreen-btn" title="Helskärm">🔲</button>
+    </div>
+    <div id="game-container">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <div id="start-screen" class="overlay">
+            <h1 style="font-size: clamp(30px, 8vw, 60px); margin-bottom: 10px; text-align: center;">🐷 Hungriga Grisar 🐦</h1>
+            <h2 style="font-size: clamp(16px, 4vw, 30px); text-align: center;">Tryck eller Klicka för att spela!</h2>
+        </div>
+        <div id="score-display">Tid: <span id="score">0s</span></div>
+    </div>
+    <script src="game.js"></script>
+</body>
+</html>

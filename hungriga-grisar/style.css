@@ -1,0 +1,111 @@
+body {
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background-color: #87CEEB; /* Himmelsblå */
+    font-family: 'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', cursive, sans-serif;
+    overflow: hidden;
+}
+
+#game-container {
+    position: relative;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    border-radius: 20px;
+    overflow: hidden;
+    background-color: #fff;
+    width: 100vw;
+    max-width: 800px;
+    aspect-ratio: 4 / 3;
+    box-sizing: border-box;
+    border: 8px solid #FFC0CB; /* Rosa ram för gris-temat */
+}
+
+canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to bottom, #87CEEB 0%, #E0F6FF 60%, #7CFC00 60%, #228B22 100%);
+}
+
+.overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    background-color: rgba(0, 0, 0, 0.6);
+    color: white;
+    text-shadow: 3px 3px 6px #000;
+    z-index: 10;
+    cursor: pointer;
+}
+
+#score-display {
+    position: absolute;
+    top: 20px;
+    left: 30px;
+    font-size: clamp(20px, 5vw, 40px);
+    font-weight: bold;
+    color: #FFD700; /* Guld */
+    text-shadow: 3px 3px 6px #000;
+    z-index: 5;
+    pointer-events: none;
+}
+
+#top-buttons {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    display: flex;
+    gap: 10px;
+    z-index: 100;
+}
+
+#top-buttons button {
+    font-size: clamp(20px, 5vw, 40px);
+    background: rgba(255, 255, 255, 0.85);
+    border: 3px solid #FFC0CB;
+    border-radius: 10px;
+    cursor: pointer;
+    padding: 5px 15px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    transition: transform 0.1s;
+}
+
+#top-buttons button:active {
+    transform: scale(0.9);
+    background: rgba(200, 200, 200, 0.9);
+}
+
+#back-btn {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    font-size: clamp(16px, 4vw, 24px);
+    background: #FF69B4;
+    color: white;
+    border: 3px solid #FFF;
+    border-radius: 15px;
+    padding: 10px 20px;
+    text-decoration: none;
+    font-weight: bold;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    z-index: 100;
+    transition: transform 0.2s, background 0.2s;
+}
+
+#back-btn:hover {
+    transform: scale(1.05);
+    background: #FF1493;
+}
+
+#back-btn:active {
+    transform: scale(0.95);
+}

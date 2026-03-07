@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Galna Bilar</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+    <a href="../index.html" id="back-btn" title="Tillbaka till Spelhålan">⬅️ Tillbaka</a>
+    <div id="top-buttons">
+        <button id="help-btn" title="Hjälp">❓</button>
+        <button id="fullscreen-btn" title="Helskärm">🔲</button>
+    </div>
+    <div id="game-container">
+        <div id="game-canvas-wrapper"></div>
+        <div id="start-screen" class="overlay">
+            <h1 style="font-size: clamp(30px, 8vw, 60px); margin-bottom: 10px; text-align: center;">🏎️ Galna Bilar ⭐</h1>
+            <h2 style="font-size: clamp(14px, 3.5vw, 24px); text-align: center;">Tryck vänster, mitten eller höger<br>för att byta fil!<br><br>Samla 100 stjärnor för att vinna!</h2>
+        </div>
+        <div id="score-display">⭐ <span id="score">0 / 100</span></div>
+        <div id="speed-display">0 km/h</div>
+    </div>
+    <script src="game.js"></script>
+</body>
+</html>
