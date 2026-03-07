@@ -5,6 +5,7 @@ const speedDisplay = document.getElementById('speed-display');
 const container = document.getElementById('game-canvas-wrapper');
 
 let isPlaying = false;
+let hasWon = false;
 let score = 0;
 const targetScore = 100;
 let startTime = 0;
@@ -70,12 +71,23 @@ function playSound(type) {
         gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
         noise.connect(filt); filt.connect(gain); noise.start(now); return;
     } else if (type === 'honk') {
-        osc.type = 'square';
-        osc.frequency.setValueAtTime(300, now);
-        osc.frequency.setValueAtTime(350, now + 0.15);
+        // Realistisk biltuta: två tåner samtidigt
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(380, now);
         gain.gain.setValueAtTime(0.2, now);
-        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
-        osc.start(now); osc.stop(now + 0.4);
+        gain.gain.setValueAtTime(0.2, now + 0.4);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.55);
+        osc.start(now); osc.stop(now + 0.55);
+        // Andra tonen
+        const osc2 = audioCtx.createOscillator();
+        const gain2 = audioCtx.createGain();
+        osc2.type = 'sawtooth';
+        osc2.frequency.setValueAtTime(475, now);
+        osc2.connect(gain2); gain2.connect(audioCtx.destination);
+        gain2.gain.setValueAtTime(0.15, now);
+        gain2.gain.setValueAtTime(0.15, now + 0.4);
+        gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.55);
+        osc2.start(now); osc2.stop(now + 0.55);
     } else if (type === 'win') {
         osc.disconnect();
         [523,659,783,1046,783,1046,1318].forEach((f, i) => {
@@ -473,7 +485,8 @@ function createObstacle3D() {
 }
 
 function spawnItem() {
-    if (aiCars.length > 0) return; // Inga objekt under AI-bil-race
+    // Spawna inte medan det finns opasserade AI-bilar på vägen
+    if (aiCars.some(ai => !ai.passed)) return;
     const lane = Math.floor(Math.random() * 3);
     const isStar = Math.random() < 0.85;
     let mesh;
@@ -529,6 +542,7 @@ function updateParticles() {
 // ===================== SPELLOGIK =====================
 function winGame() {
     isPlaying = false;
+    hasWon = true;
     playSound('win');
     const finalTime = Math.floor((Date.now() - startTime) / 1000);
     const minutes = Math.floor(finalTime / 60);
@@ -549,12 +563,17 @@ function winGame() {
         window.speechSynthesis.speak(u);
     }
     startScreen.style.display = 'flex';
-    startScreen.innerHTML = `<h1 style="font-size: clamp(30px, 8vw, 60px); margin-bottom: 10px; text-align: center;">🏆 DU VANN! 🏆</h1><h2 style="font-size: clamp(14px, 4vw, 24px); text-align: center;">Du samlade alla ${targetScore} stjärnor på ${timeDisplay}!<br>${praise}<br><br>Tryck eller klicka för att köra igen.</h2>`;
+    startScreen.innerHTML = `<h1 style="font-size: clamp(30px, 8vw, 60px); margin-bottom: 10px; text-align: center;">🏆 DU VANN! 🏆</h1><h2 style="font-size: clamp(14px, 4vw, 24px); text-align: center;">Du samlade alla ${targetScore} stjärnor på ${timeDisplay}!<br>${praise}</h2><button id="replay-btn" style="margin-top: 20px; font-size: clamp(18px, 5vw, 30px); padding: 15px 40px; border-radius: 15px; border: 3px solid #FFD700; background: #e74c3c; color: white; cursor: pointer; font-family: inherit; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.4);">🏁 Kör igen!</button>`;
+    document.getElementById('replay-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        startGame();
+    });
 }
 
 function resetGame() {
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
     score = 0; frames = 0; speed = 40; currentLane = 1; roadZ = 0;
+    hasWon = false;
     startTime = Date.now();
     lastAiCarTime = Date.now();
     targetX = LANE_POSITIONS[1];
@@ -766,18 +785,18 @@ function handleInput(e) {
         if (e.repeat) return;
         if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
             if (e.cancelable) e.preventDefault();
-            if (!isPlaying) { startGame(); return; }
+            if (!isPlaying && !hasWon) { startGame(); return; }
             if (currentLane > 0) { currentLane--; playSound('switch'); }
             return;
         } else if (e.code === 'ArrowRight' || e.code === 'KeyD') {
             if (e.cancelable) e.preventDefault();
-            if (!isPlaying) { startGame(); return; }
+            if (!isPlaying && !hasWon) { startGame(); return; }
             if (currentLane < 2) { currentLane++; playSound('switch'); }
             return;
         } else if (e.code === 'Space') {
             if (e.cancelable) e.preventDefault();
-            if (!isPlaying) { startGame(); return; }
-            playSound('honk'); // Tuta!
+            if (!isPlaying && !hasWon) { startGame(); return; }
+            if (isPlaying) playSound('honk'); // Tuta!
             return;
         }
         return;
@@ -785,7 +804,7 @@ function handleInput(e) {
 
     if (e.type === 'touchstart' || e.type === 'mousedown') {
         if (e.cancelable) e.preventDefault();
-        if (!isPlaying) { startGame(); return; }
+        if (!isPlaying && !hasWon) { startGame(); return; }
         const newLane = getInputLane(e);
         if (newLane !== currentLane) { currentLane = newLane; playSound('switch'); }
     }
