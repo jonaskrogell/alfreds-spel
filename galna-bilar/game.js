@@ -616,18 +616,15 @@ function gameLoop() {
     // =========== AI-bilar ===========
     const now = Date.now();
     if (aiCars.length === 0 && now - lastAiCarTime > 20000) {
-        // Spawna 2-5 AI-bilar i rader (max 2 per rad = alltid 1 fri fil)
-        const numCars = 2 + Math.floor(Math.random() * 4); // 2-5
-        const rows = []; // Varje rad: { z, lanes: [] }
+        // Spawna 2-10 AI-bilar i rader (max 2 per rad = alltid 1 fri fil)
+        const numCars = 2 + Math.floor(Math.random() * 9); // 2-10
         let carsPlaced = 0;
         let rowZ = -130;
 
         while (carsPlaced < numCars) {
-            // Hur många i denna rad? Max 2 för att alltid lämna en fri fil
             const remaining = numCars - carsPlaced;
             const inThisRow = Math.min(remaining, Math.random() < 0.5 ? 1 : 2);
 
-            // Välj filer för denna rad
             const availableLanes = [0, 1, 2];
             const rowLanes = [];
             for (let c = 0; c < inThisRow; c++) {
@@ -636,57 +633,47 @@ function gameLoop() {
             }
 
             rowLanes.forEach(lane => {
-                const speedFactor = 0.45 + Math.random() * 0.25; // 45-70%
-                const ai = createAiCar(lane, speedFactor);
+                // Absolut hastighet: 35-70 km/h
+                const aiAbsSpeed = 35 + Math.random() * 35;
+                const ai = createAiCar(lane, 0);
+                ai.absSpeed = aiAbsSpeed;
                 ai.mesh.position.z = rowZ + (Math.random() - 0.5) * 4;
                 aiCars.push(ai);
                 carsPlaced++;
             });
 
-            rowZ -= 18 - Math.random() * 6; // 12-18 enheter mellan rader
+            rowZ -= 14 - Math.random() * 4; // 10-14 enheter mellan rader
         }
-        playSound('honk');
     }
 
     for (let i = aiCars.length - 1; i >= 0; i--) {
         const ai = aiCars[i];
-        const aiMoveSpeed = moveSpeed * ai.speedFactor;
-        ai.mesh.position.z += moveSpeed - aiMoveSpeed;
+        // Relativ rörelse baserad på absoluta hastigheter
+        const relativeSpeed = (speed - ai.absSpeed) * 0.004;
+        ai.mesh.position.z += relativeSpeed;
 
-        // Om AI-bilen fått en boost (efter krock), rör den sig snabbare
-        if (ai.boosted) {
-            ai.mesh.position.z += ai.boostSpeed * 0.004;
-            ai.boostSpeed *= 0.97;
-            if (ai.boostSpeed < 3) ai.boosted = false;
-        }
-
-        // Första krock: spela ljud, ge AI boost
+        // Första krock: SWAP hastigheter
         if (!ai.passed && !ai.hitOnce && ai.lane === currentLane &&
             ai.mesh.position.z > -2 && ai.mesh.position.z < 5) {
             playSound('crash');
             createExplosion(car.position.x, 1, ai.mesh.position.z, 0xff6600);
 
-            const ourSpeedBefore = speed;
-            const aiSpeed = speed * ai.speedFactor;
-
-            speed = aiSpeed;
-
-            ai.boosted = true;
-            ai.boostSpeed = ourSpeedBefore - aiSpeed;
+            // Enkel swap: vi får AI:ns fart, AI:n får vår fart
+            const ourOldSpeed = speed;
+            speed = ai.absSpeed;       // Vi saktas ner
+            ai.absSpeed = ourOldSpeed;  // AI:n skjuts framåt
             ai.hitOnce = true;
         }
 
-        // KONTINUERLIG BLOCKERING: efter krock, håll spelaren bakom
-        // så länge de är i samma fil och AI-bilen är framför
-        if (ai.hitOnce && !ai.passed && ai.lane === currentLane && ai.mesh.position.z < 8) {
-            // Begränsa vår fart så vi inte kan köra igenom
-            const aiEffectiveSpeed = speed * ai.speedFactor;
-            if (speed > aiEffectiveSpeed) {
-                speed = aiEffectiveSpeed;
+        // Kontinuerlig blockering: kan inte köra igenom i samma fil
+        if (ai.hitOnce && !ai.passed && ai.lane === currentLane &&
+            ai.mesh.position.z > -3 && ai.mesh.position.z < 8) {
+            if (speed > ai.absSpeed) {
+                speed = ai.absSpeed;
             }
         }
 
-        // Passerad (vi bytte fil och körde om!)
+        // Passerad
         if (!ai.passed && ai.mesh.position.z > 6) {
             ai.passed = true;
         }
@@ -789,7 +776,8 @@ function handleInput(e) {
             return;
         } else if (e.code === 'Space') {
             if (e.cancelable) e.preventDefault();
-            if (!isPlaying) startGame();
+            if (!isPlaying) { startGame(); return; }
+            playSound('honk'); // Tuta!
             return;
         }
         return;
