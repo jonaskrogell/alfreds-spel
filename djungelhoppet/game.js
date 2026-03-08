@@ -144,7 +144,7 @@ function startAmbient() {
 }
 
 // ===================== PHASER CONFIG =====================
-const GAME_WIDTH = 480;
+const GAME_WIDTH = 960;
 const GAME_HEIGHT = 800;
 
 const config = {
@@ -162,7 +162,9 @@ const config = {
     },
     scale: {
         mode: Phaser.Scale.FIT,
-        autoCenter: Phaser.Scale.CENTER_BOTH
+        autoCenter: Phaser.Scale.CENTER_BOTH,
+        width: GAME_WIDTH,
+        height: GAME_HEIGHT
     },
     scene: {
         preload: preload,
@@ -317,9 +319,9 @@ function createTextures(scene) {
     const bg1 = scene.make.graphics({ add: false });
     bg1.fillStyle(0x0d1f0d, 1);
     bg1.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
-    // Siluett-träd
-    for (let i = 0; i < 8; i++) {
-        const tx = i * 65 + Math.random() * 30;
+    // Siluett-träd (fler för bredare skärm)
+    for (let i = 0; i < 16; i++) {
+        const tx = i * (GAME_WIDTH / 16) + Math.random() * 30;
         const th = 200 + Math.random() * 300;
         bg1.fillStyle(0x0a180a, 1);
         bg1.fillRect(tx + 8, GAME_HEIGHT - th, 8, th);
@@ -331,25 +333,25 @@ function createTextures(scene) {
 
     // Lager 2: Dimmiga träd (mellanplan)
     const bg2 = scene.make.graphics({ add: false });
-    for (let i = 0; i < 6; i++) {
-        const tx = i * 85 + Math.random() * 20;
+    for (let i = 0; i < 12; i++) {
+        const tx = i * (GAME_WIDTH / 12) + Math.random() * 30;
         const th = 150 + Math.random() * 200;
         bg2.fillStyle(0x1a3a1a, 0.6);
         bg2.fillRect(tx + 10, GAME_HEIGHT - th, 6, th);
         bg2.fillStyle(0x1f4a1f, 0.5);
-        bg2.fillCircle(tx + 13, GAME_HEIGHT - th, 30 + Math.random() * 20);
-        bg2.fillCircle(tx + 13, GAME_HEIGHT - th + 25, 25 + Math.random() * 15);
+        bg2.fillCircle(tx + 13, GAME_HEIGHT - th, 30 + Math.random() * 25);
+        bg2.fillCircle(tx + 13, GAME_HEIGHT - th + 25, 25 + Math.random() * 20);
     }
     bg2.generateTexture('bg2', GAME_WIDTH, GAME_HEIGHT);
     bg2.destroy();
 
     // Lager 3: Ljust gröna löv (förgrund)
     const bg3 = scene.make.graphics({ add: false });
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 20; i++) {
         const lx = Math.random() * GAME_WIDTH;
         const ly = Math.random() * GAME_HEIGHT;
         bg3.fillStyle(0x44aa44, 0.15);
-        bg3.fillCircle(lx, ly, 20 + Math.random() * 30);
+        bg3.fillCircle(lx, ly, 20 + Math.random() * 35);
     }
     bg3.generateTexture('bg3', GAME_WIDTH, GAME_HEIGHT);
     bg3.destroy();
@@ -551,59 +553,67 @@ function create() {
 
 // ===================== GENERERA PLATTFORMAR =====================
 function generatePlatform(scene) {
-    // Bestäm Y-position (80-140px ovanför senaste)
-    const gap = 80 + Math.random() * 60;
+    // Bestäm Y-position (70-120px ovanför senaste)
+    const gap = 70 + Math.random() * 50;
     const y = lastPlatformY - gap;
-    const x = 50 + Math.random() * (GAME_WIDTH - 100);
 
-    const rand = Math.random();
-    let plat;
+    // Generera 1-3 plattformar på denna höjd (flera vägar uppåt!)
+    const numPlatforms = 1 + Math.floor(Math.random() * 3); // 1-3 stycken
+    const usedZones = [];
 
-    if (rand < 0.55) {
-        // Stationärt blad
-        plat = platforms.create(x, y, 'leaf');
-        plat.setData('type', 'leaf');
-    } else if (rand < 0.85) {
-        // Svingande lian
-        plat = platforms.create(x, y, 'vine');
-        plat.setData('type', 'vine');
-        plat.setData('startX', x);
-        plat.setData('swingSpeed', 1.5 + Math.random() * 1.5);
-        plat.setData('swingAmplitude', 40 + Math.random() * 50);
-        plat.setData('swingPhase', Math.random() * Math.PI * 2);
-    } else {
-        // Guld-frukt (super-studsmatta)
-        plat = platforms.create(x, y, 'fruit');
-        plat.setData('type', 'fruit');
-        // Skapa guldglow-effekt med tween
-        scene.tweens.add({
-            targets: plat,
-            alpha: 0.6,
-            yoyo: true,
-            repeat: -1,
-            duration: 600,
-            ease: 'Sine.easeInOut'
-        });
-    }
+    for (let p = 0; p < numPlatforms; p++) {
+        // Dela in skärmen i zoner och undvik överlapp
+        let x;
+        let attempts = 0;
+        do {
+            x = 60 + Math.random() * (GAME_WIDTH - 120);
+            attempts++;
+        } while (usedZones.some(z => Math.abs(z - x) < 120) && attempts < 10);
+        usedZones.push(x);
 
-    plat.refreshBody();
+        const rand = Math.random();
+        let plat;
 
-    // Lägg ibland till en slumpmässig stjärna ovanför plattformar
-    if (Math.random() < 0.3) {
-        const star = scene.physics.add.sprite(x + (Math.random() - 0.5) * 40, y - 35, 'star');
-        star.body.setAllowGravity(false);
-        star.setData('type', 'collectible');
-        star.setDepth(8);
-        // Rotera sakta
-        scene.tweens.add({
-            targets: star,
-            angle: 360,
-            repeat: -1,
-            duration: 2000,
-            ease: 'Linear'
-        });
-        // Lägg till i stjärngruppen (overlap hanteras globalt)
-        starsGroup.add(star);
+        if (rand < 0.55) {
+            plat = platforms.create(x, y + (Math.random() - 0.5) * 20, 'leaf');
+            plat.setData('type', 'leaf');
+        } else if (rand < 0.85) {
+            plat = platforms.create(x, y + (Math.random() - 0.5) * 20, 'vine');
+            plat.setData('type', 'vine');
+            plat.setData('startX', x);
+            plat.setData('swingSpeed', 1.5 + Math.random() * 1.5);
+            plat.setData('swingAmplitude', 40 + Math.random() * 60);
+            plat.setData('swingPhase', Math.random() * Math.PI * 2);
+        } else {
+            plat = platforms.create(x, y + (Math.random() - 0.5) * 20, 'fruit');
+            plat.setData('type', 'fruit');
+            scene.tweens.add({
+                targets: plat,
+                alpha: 0.6,
+                yoyo: true,
+                repeat: -1,
+                duration: 600,
+                ease: 'Sine.easeInOut'
+            });
+        }
+
+        plat.refreshBody();
+
+        // Lägg ibland till stjärnor
+        if (Math.random() < 0.25) {
+            const star = scene.physics.add.sprite(x + (Math.random() - 0.5) * 40, y - 35, 'star');
+            star.body.setAllowGravity(false);
+            star.setData('type', 'collectible');
+            star.setDepth(8);
+            scene.tweens.add({
+                targets: star,
+                angle: 360,
+                repeat: -1,
+                duration: 2000,
+                ease: 'Linear'
+            });
+            starsGroup.add(star);
+        }
     }
 
     lastPlatformY = y;
