@@ -193,6 +193,7 @@ let touchLeft = false;
 let touchRight = false;
 let cameraTarget = 0;
 let gameScene;
+let starsGroup;
 
 // ===================== TEXTUR-GENERERING =====================
 function preload() {
@@ -396,6 +397,18 @@ function create() {
     // --- Plattformar (fysik-grupp) ---
     platforms = this.physics.add.staticGroup();
 
+    // --- Stjärnor (grupp) ---
+    starsGroup = this.physics.add.group({ allowGravity: false });
+
+    // --- SPELARE (skapas FÖRE plattformarna så overlap fungerar) ---
+    player = this.physics.add.sprite(GAME_WIDTH / 2, GAME_HEIGHT - 100, 'player');
+    player.setBounce(0);
+    player.setCollideWorldBounds(false);
+    // Förlåtande hitbox: 20% mindre
+    player.body.setSize(38, 38);
+    player.body.setOffset(5, 5);
+    player.setDepth(10);
+
     // Start-plattform (stor och trygg)
     const startPlat = platforms.create(GAME_WIDTH / 2, GAME_HEIGHT - 50, 'leaf');
     startPlat.setScale(1.5).refreshBody();
@@ -407,17 +420,9 @@ function create() {
         generatePlatform(this);
     }
 
-    // --- SPELARE ---
-    player = this.physics.add.sprite(GAME_WIDTH / 2, GAME_HEIGHT - 100, 'player');
-    player.setBounce(0);
-    player.setCollideWorldBounds(false);
-    // Förlåtande hitbox: 20% mindre
-    player.body.setSize(38, 38);
-    player.body.setOffset(5, 5);
-    player.setDepth(10);
-
-    // --- Kollision ---
+    // --- Kollisioner ---
     this.physics.add.collider(player, platforms, onPlatformLand, null, this);
+    this.physics.add.overlap(player, starsGroup, collectStar, null, this);
 
     // --- Poäng-text ---
     scoreText = this.add.text(GAME_WIDTH / 2, 20, '⭐ 0', {
@@ -583,7 +588,7 @@ function generatePlatform(scene) {
 
     plat.refreshBody();
 
-    // Lägg ibland till en slumpmässig stjärna ovannför plattformar
+    // Lägg ibland till en slumpmässig stjärna ovanför plattformar
     if (Math.random() < 0.3) {
         const star = scene.physics.add.sprite(x + (Math.random() - 0.5) * 40, y - 35, 'star');
         star.body.setAllowGravity(false);
@@ -597,8 +602,8 @@ function generatePlatform(scene) {
             duration: 2000,
             ease: 'Linear'
         });
-        // Kollision med spelaren
-        scene.physics.add.overlap(player, star, collectStar, null, scene);
+        // Lägg till i stjärngruppen (overlap hanteras globalt)
+        starsGroup.add(star);
     }
 
     lastPlatformY = y;
