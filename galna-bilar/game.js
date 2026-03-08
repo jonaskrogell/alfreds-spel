@@ -910,6 +910,21 @@ window.addEventListener('keydown', handleInput);
 window.addEventListener('touchstart', handleInput, { passive: false });
 window.addEventListener('mousedown', handleInput);
 
+// Ta emot tangentbordshändelser från huvudvy (iframe workaround)
+window.addEventListener('message', (e) => {
+    if (e.data && e.data.type === 'keydown') {
+        handleInput({
+            type: 'keydown',
+            code: e.data.code,
+            key: e.data.key,
+            repeat: e.data.repeat,
+            preventDefault: () => {},
+            cancelable: false,
+            target: document.body
+        });
+    }
+});
+
 // Knappar
 document.getElementById('help-btn').addEventListener('click', (e) => {
     e.stopPropagation(); initAudio();

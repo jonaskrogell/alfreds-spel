@@ -180,6 +180,15 @@
             gameIframe.style.display = 'block';
             menuContainer.style.display = 'none';
             fullscreenBtn.style.display = 'none';
+            
+            // Sätt fokus på iframen så att tangentbordet fungerar
+            gameIframe.focus();
+            gameIframe.onload = () => {
+                gameIframe.focus();
+                if (gameIframe.contentWindow) {
+                    gameIframe.contentWindow.focus();
+                }
+            };
         }
 
         window.addEventListener('message', (e) => {
@@ -188,6 +197,18 @@
                 gameIframe.style.display = 'none';
                 menuContainer.style.display = 'flex';
                 fullscreenBtn.style.display = 'flex';
+            }
+        });
+
+        // Vidarebefordra tangenttryckningar om iframen på något sätt tappat fokus
+        window.addEventListener('keydown', (e) => {
+            if (gameIframe.style.display === 'block' && gameIframe.contentWindow) {
+                gameIframe.contentWindow.postMessage({
+                    type: 'keydown',
+                    code: e.code,
+                    key: e.key,
+                    repeat: e.repeat
+                }, '*');
             }
         });
 
