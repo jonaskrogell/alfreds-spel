@@ -199,6 +199,7 @@ let starsGroup;
 let lastProgressTime = 0;
 let lastProgressY = 0;
 let monkeyActive = false;
+let activeFruits = [];
 
 // ===================== TEXTUR-GENERERING =====================
 function preload() {
@@ -591,14 +592,19 @@ function generatePlatform(scene) {
     const numPlatforms = Math.random() < 0.6 ? 2 : 1;
     const usedZones = [];
 
+    // Pruna gamla frukter ur lagrade listan för prestanda (bara spara nyligen skapade under oss)
+    activeFruits = activeFruits.filter(f => (f.y - lastPlatformY) < 1500);
+
     for (let p = 0; p < numPlatforms; p++) {
-        // Sprida ut över hela bredden, undvik överlapp
+        // Sprida ut över hela bredden, undvik överlapp och undvik att bygga över "guld-frukter" (bomber)
         let x;
         let attempts = 0;
         do {
             x = 80 + Math.random() * (GAME_WIDTH - 160);
             attempts++;
-        } while (usedZones.some(z => Math.abs(z - x) < 180) && attempts < 10);
+        } while ((usedZones.some(z => Math.abs(z - x) < 180) ||
+                  activeFruits.some(f => Math.abs(f.x - x) < 160 && (f.y - y) > 0 && (f.y - y) < 800)) 
+                  && attempts < 15);
         usedZones.push(x);
 
         const rand = Math.random();
@@ -620,6 +626,10 @@ function generatePlatform(scene) {
             // Guld-frukt
             plat = platforms.create(x, y + (Math.random() - 0.5) * 15, 'fruit');
             plat.setData('type', 'fruit');
+            
+            // Spara positionen så att inga plattformar genereras rakt ovanför
+            activeFruits.push({ x: x, y: plat.y });
+
             scene.tweens.add({
                 targets: plat,
                 alpha: 0.6,
@@ -726,8 +736,16 @@ function onPlatformLand(playerSprite, platform) {
             ease: 'Sine.easeOut'
         });
 
-        // Ta bort frukten
-        platform.destroy();
+        // Göm frukten tillfälligt istället för att ta bort, så att den kommer tillbaka och man kan testa igen
+        platform.body.enable = false;
+        platform.setVisible(false);
+        gameScene.time.delayedCall(1000, () => {
+            if (platform && platform.scene && isStarted) { 
+                platform.body.enable = true;
+                platform.setVisible(true);
+                platform.refreshBody();
+            }
+        });
 
         score += 5;
         scoreText.setText('⭐ ' + score);
@@ -775,9 +793,6 @@ function onPlatformLand(playerSprite, platform) {
 
     isFalling = false;
     isRescued = false;
-    // Återställ apa-timer vid landning
-    lastProgressTime = Date.now();
-    lastProgressY = playerSprite.y;
 }
 
 // ===================== SAMLA STJÄRNA =====================
