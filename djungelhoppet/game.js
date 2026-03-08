@@ -196,6 +196,9 @@ let touchRight = false;
 let cameraTarget = 0;
 let gameScene;
 let starsGroup;
+let lastProgressTime = 0;
+let lastProgressY = 0;
+let monkeyActive = false;
 
 // ===================== TEXTUR-GENERERING =====================
 function preload() {
@@ -231,29 +234,29 @@ function createTextures(scene) {
     playerGfx.generateTexture('player', 48, 48);
     playerGfx.destroy();
 
-    // --- PLATTFORM: Blad (brett grönt blad) ---
+    // --- PLATTFORM: Blad (brett grönt blad) - STÖRRE ---
     const leafGfx = scene.make.graphics({ add: false });
     leafGfx.fillStyle(0x33aa33, 1);
-    leafGfx.fillRoundedRect(0, 5, 90, 16, 8);
+    leafGfx.fillRoundedRect(0, 4, 140, 20, 10);
     // Bladnerv
     leafGfx.lineStyle(2, 0x228822);
-    leafGfx.lineBetween(10, 13, 80, 13);
+    leafGfx.lineBetween(12, 14, 128, 14);
     // Vener
-    for (let x = 20; x < 80; x += 15) {
+    for (let x = 25; x < 130; x += 18) {
         leafGfx.lineStyle(1, 0x228822);
-        leafGfx.lineBetween(x, 8, x + 5, 13);
-        leafGfx.lineBetween(x, 18, x + 5, 13);
+        leafGfx.lineBetween(x, 7, x + 6, 14);
+        leafGfx.lineBetween(x, 21, x + 6, 14);
     }
-    leafGfx.generateTexture('leaf', 90, 22);
+    leafGfx.generateTexture('leaf', 140, 26);
     leafGfx.destroy();
 
-    // --- PLATTFORM: Lian (rörlig, brun+grön) ---
+    // --- PLATTFORM: Lian (rörlig, brun+grön) - STÖRRE ---
     const vineGfx = scene.make.graphics({ add: false });
     vineGfx.fillStyle(0x228833, 1);
-    vineGfx.fillRoundedRect(0, 5, 70, 14, 7);
+    vineGfx.fillRoundedRect(0, 5, 110, 18, 9);
     vineGfx.fillStyle(0x6b4226, 1);
-    vineGfx.fillRect(32, 0, 6, 7); // Lian-rep uppåt
-    vineGfx.generateTexture('vine', 70, 22);
+    vineGfx.fillRect(52, 0, 6, 7); // Lian-rep uppåt
+    vineGfx.generateTexture('vine', 110, 26);
     vineGfx.destroy();
 
     // --- GULD-FRUKT (super-studsmatta) ---
@@ -376,6 +379,33 @@ function createTextures(scene) {
     dustP.fillCircle(2, 2, 2);
     dustP.generateTexture('stardust', 4, 4);
     dustP.destroy();
+
+    // --- APA (hjälpare) ---
+    const monkeyGfx = scene.make.graphics({ add: false });
+    // Kropp (brun)
+    monkeyGfx.fillStyle(0x8B5A2B, 1);
+    monkeyGfx.fillCircle(24, 26, 18);
+    // Mage
+    monkeyGfx.fillStyle(0xDEB887, 1);
+    monkeyGfx.fillCircle(24, 30, 11);
+    // Ögon
+    monkeyGfx.fillStyle(0xffffff, 1);
+    monkeyGfx.fillCircle(17, 20, 6);
+    monkeyGfx.fillCircle(31, 20, 6);
+    monkeyGfx.fillStyle(0x222222, 1);
+    monkeyGfx.fillCircle(18, 19, 3);
+    monkeyGfx.fillCircle(32, 19, 3);
+    // Stort leende
+    monkeyGfx.lineStyle(2, 0x553311);
+    monkeyGfx.beginPath();
+    monkeyGfx.arc(24, 28, 9, 0.1, Math.PI - 0.1, false);
+    monkeyGfx.strokePath();
+    // Öron
+    monkeyGfx.fillStyle(0xDEB887, 1);
+    monkeyGfx.fillCircle(6, 22, 6);
+    monkeyGfx.fillCircle(42, 22, 6);
+    monkeyGfx.generateTexture('monkey', 48, 48);
+    monkeyGfx.destroy();
 }
 
 // ===================== CREATE =====================
@@ -553,39 +583,42 @@ function create() {
 
 // ===================== GENERERA PLATTFORMAR =====================
 function generatePlatform(scene) {
-    // Bestäm Y-position (70-120px ovanför senaste)
-    const gap = 70 + Math.random() * 50;
+    // Bestäm Y-position (60-100px ovanför senaste - lättare hopp!
+    const gap = 55 + Math.random() * 45;
     const y = lastPlatformY - gap;
 
-    // Generera 1-3 plattformar på denna höjd (flera vägar uppåt!)
-    const numPlatforms = 1 + Math.floor(Math.random() * 3); // 1-3 stycken
+    // Generera 1-2 plattformar per rad (färre men större = lättare)
+    const numPlatforms = Math.random() < 0.6 ? 2 : 1;
     const usedZones = [];
 
     for (let p = 0; p < numPlatforms; p++) {
-        // Dela in skärmen i zoner och undvik överlapp
+        // Sprida ut över hela bredden, undvik överlapp
         let x;
         let attempts = 0;
         do {
-            x = 60 + Math.random() * (GAME_WIDTH - 120);
+            x = 80 + Math.random() * (GAME_WIDTH - 160);
             attempts++;
-        } while (usedZones.some(z => Math.abs(z - x) < 120) && attempts < 10);
+        } while (usedZones.some(z => Math.abs(z - x) < 180) && attempts < 10);
         usedZones.push(x);
 
         const rand = Math.random();
         let plat;
 
-        if (rand < 0.55) {
-            plat = platforms.create(x, y + (Math.random() - 0.5) * 20, 'leaf');
+        if (rand < 0.60) {
+            // Stora blad (vanligast, trygga)
+            plat = platforms.create(x, y + (Math.random() - 0.5) * 15, 'leaf');
             plat.setData('type', 'leaf');
         } else if (rand < 0.85) {
-            plat = platforms.create(x, y + (Math.random() - 0.5) * 20, 'vine');
+            // Svingande lian
+            plat = platforms.create(x, y + (Math.random() - 0.5) * 15, 'vine');
             plat.setData('type', 'vine');
             plat.setData('startX', x);
-            plat.setData('swingSpeed', 1.5 + Math.random() * 1.5);
-            plat.setData('swingAmplitude', 40 + Math.random() * 60);
+            plat.setData('swingSpeed', 1.0 + Math.random() * 1.0);
+            plat.setData('swingAmplitude', 30 + Math.random() * 50);
             plat.setData('swingPhase', Math.random() * Math.PI * 2);
         } else {
-            plat = platforms.create(x, y + (Math.random() - 0.5) * 20, 'fruit');
+            // Guld-frukt
+            plat = platforms.create(x, y + (Math.random() - 0.5) * 15, 'fruit');
             plat.setData('type', 'fruit');
             scene.tweens.add({
                 targets: plat,
@@ -640,6 +673,8 @@ function startGameAction() {
     // Ge spelaren ett initialt hopp
     player.setVelocityY(-500);
     playSound('jump');
+    lastProgressTime = Date.now();
+    lastProgressY = player.y;
 
     // TTS: Välkommen
     if ('speechSynthesis' in window) {
@@ -740,6 +775,9 @@ function onPlatformLand(playerSprite, platform) {
 
     isFalling = false;
     isRescued = false;
+    // Återställ apa-timer vid landning
+    lastProgressTime = Date.now();
+    lastProgressY = playerSprite.y;
 }
 
 // ===================== SAMLA STJÄRNA =====================
@@ -845,6 +883,17 @@ function update(time, delta) {
         rescuePlayer(this);
     }
 
+    // --- APA-HJÄLPARE: om spelaren fastnat i 20 sek ---
+    const currentY = player.y;
+    if (currentY < lastProgressY - 30) {
+        // Spelaren har gjort framsteg (klättrat uppåt)
+        lastProgressY = currentY;
+        lastProgressTime = Date.now();
+    }
+    if (isStarted && !monkeyActive && !isRescued && Date.now() - lastProgressTime > 20000) {
+        monkeyRescue(this);
+    }
+
     // Guld guide-partiklar följer kamera
     if (guideParticles) {
         guideParticles.setPosition(0, 0);
@@ -901,6 +950,86 @@ function rescuePlayer(scene) {
 
     // Lätt skakning under räddning
     scene.cameras.main.shake(100, 0.008);
+}
+
+// ===================== APA-RÄDDNING (Stuck Helper) =====================
+function monkeyRescue(scene) {
+    monkeyActive = true;
+    playSound('collect');
+
+    // TTS: Apan kommer!
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance('Här kommer apan och hjälper dig!');
+        u.lang = 'sv-SE'; u.rate = 1.0;
+        window.speechSynthesis.speak(u);
+    }
+
+    // Skapa apa-sprite
+    const monkey = scene.add.sprite(player.x + 50, player.y + 30, 'monkey');
+    monkey.setDepth(12);
+    monkey.setScale(1.2);
+
+    // Apan svingar in till spelaren
+    scene.tweens.add({
+        targets: monkey,
+        x: player.x,
+        y: player.y - 10,
+        duration: 500,
+        ease: 'Back.easeOut',
+        onComplete: () => {
+            // Apan lyfter spelaren uppåt!
+            const targetY = cameraTarget + GAME_HEIGHT * 0.3;
+
+            scene.tweens.add({
+                targets: monkey,
+                y: targetY,
+                x: GAME_WIDTH / 2 + (Math.random() - 0.5) * 200,
+                duration: 1200,
+                ease: 'Sine.easeInOut',
+                onUpdate: () => {
+                    player.setPosition(monkey.x, monkey.y + 20);
+                    player.setVelocityY(0);
+                    player.setVelocityX(0);
+                },
+                onComplete: () => {
+                    // Släpp spelaren
+                    player.setVelocityY(-400);
+                    playSound('jump');
+
+                    // Apan vinkar och försvinner
+                    scene.tweens.add({
+                        targets: monkey,
+                        alpha: 0,
+                        y: monkey.y - 80,
+                        scaleX: 0.3,
+                        scaleY: 0.3,
+                        duration: 600,
+                        ease: 'Sine.easeIn',
+                        onComplete: () => monkey.destroy()
+                    });
+
+                    // Glitter!
+                    const emitter = scene.add.particles(player.x, player.y, 'glitter', {
+                        speed: { min: 60, max: 150 },
+                        lifespan: 500,
+                        alpha: { start: 1, end: 0 },
+                        scale: { start: 0.8, end: 0.1 },
+                        quantity: 12,
+                        blendMode: 'ADD',
+                        emitting: false
+                    });
+                    emitter.explode(12);
+                    scene.time.delayedCall(600, () => emitter.destroy());
+
+                    // Återställ timers
+                    lastProgressTime = Date.now();
+                    lastProgressY = player.y;
+                    monkeyActive = false;
+                }
+            });
+        }
+    });
 }
 
 // ===================== TILLBAKA-KNAPP & HJÄLP =====================
