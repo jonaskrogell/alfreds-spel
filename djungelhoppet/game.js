@@ -359,3 +359,25 @@ function monkeyRescue(scene) {
         }
     });
 }
+
+// ===================== TILLBAKA-KNAPP & HJÄLP =====================
+document.getElementById('back-btn').addEventListener('click', (e) => {
+    e.preventDefault();
+    if (window.parent !== window) {
+        window.parent.postMessage('goBack', '*');
+    } else {
+        window.location.href = '../index.html';
+    }
+});
+
+document.getElementById('help-btn').addEventListener('click', (e) => {
+    e.preventDefault();
+    const helpMsg = 'Grod-apan springer framåt!\\nSpelaren studsar hela tiden.\\n\\n[←] tryck vänster skärm\\n[→] tryck höger skärm\\n\\nHoppa på lianer och blad, undvik fall!';
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        let u = new SpeechSynthesisUtterance(helpMsg); u.lang = 'sv-SE'; u.rate = 1.0;
+        window.speechSynthesis.speak(u);
+    } else {
+        alert(helpMsg);
+    }
+});
