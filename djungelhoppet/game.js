@@ -114,8 +114,10 @@ function generateTextures(scene) {
 
     // Melon-frukt (Gör dig stor)
     const mGfx = scene.make.graphics();
-    mGfx.fillStyle(0x27ae60, 1); mGfx.fillArc(25, 25, 22, 0, Math.PI, false); // Grön skalk
-    mGfx.fillStyle(0xe74c3c, 1); mGfx.fillArc(25, 23, 19, 0, Math.PI, false); // Rött inkråm
+    mGfx.fillStyle(0x27ae60, 1); 
+    mGfx.beginPath(); mGfx.arc(25, 25, 22, 0, Math.PI, false); mGfx.fillPath(); // Grön skalk
+    mGfx.fillStyle(0xe74c3c, 1); 
+    mGfx.beginPath(); mGfx.arc(25, 23, 19, 0, Math.PI, false); mGfx.fillPath(); // Rött inkråm
     mGfx.fillStyle(0x000000, 1); mGfx.fillCircle(15, 30, 2); mGfx.fillCircle(25, 35, 2); mGfx.fillCircle(35, 30, 2); // Kärnor
     mGfx.generateTexture('melon16', 50, 50); mGfx.destroy();
 
