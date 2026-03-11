@@ -62,7 +62,7 @@ let player, platforms, fruitsGroup, cursors, score = 0, highestY = 0, starsGroup
 let scoreText, distText, isStarted = false, isFalling = false, isRescued = false;
 let touchLeft = false, touchRight = false;
 let bgLayers = [], guideParticles, safetyCloud, bgEntitiesGroup;
-let monkeyActive = false, lastProgressTime = 0, lastProgressY = 0, lastProgressX = 0;
+let monkeyActive = false, lastProgressTime = 0, lastProgressY = 0, lastProgressX = 0, gameStartTime = 0;
 let chunks = {}; // Håller reda på genererade chunks (både X och Y)
 const CHUNK_SIZE = 600;
 
@@ -160,6 +160,19 @@ function generateTextures(scene) {
     sGfx.fillStyle(0xf1c40f, 1); sGfx.fillRect(10,0,4,24); sGfx.fillRect(0,10,24,4);
     sGfx.fillRect(4,4,16,16); sGfx.fillStyle(0xffffff, 1); sGfx.fillRect(6,6,4,4);
     sGfx.generateTexture('star16', 24, 24); sGfx.destroy();
+
+    // Solen (Ny och snygg)
+    const sunGfx = scene.make.graphics();
+    sunGfx.fillStyle(0xf39c12, 1); 
+    sunGfx.beginPath(); sunGfx.arc(120, 120, 115, 0, Math.PI*2, false); sunGfx.fillPath(); // Korona
+    sunGfx.fillStyle(0xf1c40f, 1); 
+    sunGfx.beginPath(); sunGfx.arc(120, 120, 95, 0, Math.PI*2, false); sunGfx.fillPath(); // Kropp
+    sunGfx.fillStyle(0xffffff, 0.4); 
+    sunGfx.beginPath(); sunGfx.arc(120, 120, 70, 0, Math.PI*2, false); sunGfx.fillPath(); // Centrumljus
+    // Sol-leende
+    sunGfx.fillStyle(0x000000, 1); sunGfx.fillCircle(85, 95, 10); sunGfx.fillCircle(155, 95, 10);
+    sunGfx.lineStyle(6, 0x000000); sunGfx.beginPath(); sunGfx.arc(120, 120, 45, 0.2, Math.PI - 0.2, false); sunGfx.strokePath();
+    sunGfx.generateTexture('sun16', 240, 240); sunGfx.destroy();
 
     // Apa
     const moGfx = scene.make.graphics();
@@ -341,12 +354,12 @@ function generateChunk(scene, cx, cy) {
     if (cy <= -11) {
         if (!scene.sunCreated && Math.abs(cx - Math.floor(player.x/CHUNK_SIZE)) <= 1) {
             scene.sunCreated = true;
-            let sun = fruitsGroup.create(player.x, -7000, 'fruit16');
+            // Placeras mycket närmare de sista plattformarna så det är ett lättare mål
+            let sun = fruitsGroup.create(player.x, -6300, 'sun16');
             sun.setData('type', 'sun');
-            sun.setScale(15).refreshBody();
-            sun.setTint(0xffeb3b);
-            scene.tweens.add({ targets: sun, scaleX: 18, scaleY: 18, yoyo: true, repeat: -1, duration: 1500 });
-            scene.tweens.add({ targets: sun, angle: 360, repeat: -1, duration: 6000 });
+            sun.setScale(1.2).refreshBody();
+            scene.tweens.add({ targets: sun, scaleX: 1.4, scaleY: 1.4, yoyo: true, repeat: -1, duration: 1500 });
+            scene.tweens.add({ targets: sun, angle: 360, repeat: -1, duration: 15000 });
         }
         return; // Inga plattformar över solen
     }
@@ -412,7 +425,7 @@ function generateChunk(scene, cx, cy) {
             plat.setData('swingSpeed', 1.0 + Math.random());
             plat.setData('swingPhase', Math.random() * Math.PI*2);
         } else {
-            // Frukter
+            // Frukter - 30% chans totalt per plattform
             const fRand = Math.random();
             if (fRand < 0.25) {
                 plat = fruitsGroup.create(px, py, 'fruit16');
@@ -430,7 +443,7 @@ function generateChunk(scene, cx, cy) {
                 plat = fruitsGroup.create(px, py, 'banana16');
                 plat.setData('type', 'banana');
             }
-            scene.tweens.add({ targets: plat, alpha: 0.7, yoyo: true, repeat: -1, duration: 500 });
+            scene.tweens.add({ targets: plat, y: py - 7, yoyo: true, repeat: -1, duration: 1000 + Math.random()*500 });
         }
         if (plat.refreshBody) plat.refreshBody();
 
@@ -450,6 +463,7 @@ function startGameAction() {
     if(startText) { startText.destroy(); startText = null; }
     player.setVelocityY(-600);
     playSound('jump');
+    gameStartTime = Date.now();
     lastProgressTime = Date.now();
     lastProgressY = player.y;
 }
@@ -507,8 +521,23 @@ function collectFruit(p, plat) {
         playSound('superBounce');
         plat.body.enable = false;
         
-        let winText = this.add.text(p.x, p.y + 150, 'DU KLARADE SPELET!\nGrod-apan nådde solen! ☀️\nLadda om för att spela igen.', { fontSize: '32px', fontFamily: 'Courier', color: '#fff', align: 'center', stroke:'#000', strokeThickness:6 }).setOrigin(0.5).setDepth(40);
+        let tidSek = Math.floor((Date.now() - gameStartTime) / 1000);
+        let winText = this.add.text(p.x, p.y + 150, `DU KLARADE SPELET på ${tidSek} s!\nGrod-apan nådde solen! ☀️\nSpelet startar om...`, { fontSize: '32px', fontFamily: 'Courier', color: '#fff', align: 'center', stroke:'#000', strokeThickness:6 }).setOrigin(0.5).setDepth(40);
         this.tweens.add({ targets: winText, scale: 1.2, duration: 800, yoyo:true, repeat: -1});
+
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+            let msg = `Fantastiskt bra hoppat! Du nådde solen på bara ${tidSek} sekunder. Du är en riktig supergrod-apa! Spelet startar snart om.`;
+            let u = new SpeechSynthesisUtterance(msg); 
+            u.lang = 'sv-SE'; 
+            window.speechSynthesis.speak(u);
+        }
+
+        // Automatisk omstart efter 10 sekunder
+        this.time.delayedCall(10000, () => {
+            window.location.reload();
+        });
+        
         return;
     }
 
@@ -563,6 +592,12 @@ function collectFruit(p, plat) {
             speed: {min:150, max:400}, lifespan:1500, scale:{start:1.5, end:0}, tint: [0xf1c40f, 0x3498db, 0xe74c3c, 0x2ecc71], quantity:30, emitting:false, gravityY: 600
         });
         px.explode(30); this.time.delayedCall(1600, () => px.destroy());
+
+        // Bananen gör grodan jätteliten och snabb!
+        this.tweens.add({ targets: p, scaleX: 0.5, scaleY: 0.5, duration: 400, ease: 'Elastic.easeOut' });
+        this.time.delayedCall(20000, () => {
+            if (p) this.tweens.add({ targets: p, scaleX: 1, scaleY: 1, duration: 400, ease: 'Sine.easeInOut' });
+        });
     }
 
     // Göm tillfälligt
