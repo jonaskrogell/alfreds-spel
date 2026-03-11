@@ -273,6 +273,16 @@ function generateChunk(scene, cx, cy) {
             let tx = startX + Math.random() * CHUNK_SIZE;
             scene.add.sprite(tx, 380, 'branch16').setDepth(5).setScale(0.6).setAngle(90).setTint(0x27ae60);
         }
+
+        // Se till att det finns en "trappa" uppåt om vi är direkt ovan marken
+        if (cy === 0) {
+            let p1 = platforms.create(startX + CHUNK_SIZE * 0.3, 220, 'leaf16');
+            p1.setData('type', 'leaf'); p1.refreshBody();
+            
+            let p2 = platforms.create(startX + CHUNK_SIZE * 0.7, 50, 'branch16');
+            p2.setData('type', 'branch'); p2.refreshBody();
+        }
+        
         return; // Avbryt vanliga plattformar här nere
     }
     
