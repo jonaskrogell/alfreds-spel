@@ -145,6 +145,14 @@ function generateTextures(scene) {
     bGfx.fillStyle(0x2ecc71, 1); bGfx.fillCircle(10, 10, 8); bGfx.fillCircle(140, 5, 6); // Lite mossa
     bGfx.generateTexture('branch16', 150, 26); bGfx.destroy();
 
+    // Bouncepad (Studsande svamp / trumma)
+    const bpGfx = scene.make.graphics();
+    bpGfx.fillStyle(0x8e44ad, 1); bpGfx.fillArc(50, 25, 45, Math.PI, Math.PI*2, false); // Svamphatt
+    bpGfx.fillStyle(0x9b59b6, 1); bpGfx.fillArc(50, 23, 40, Math.PI, Math.PI*2, false);
+    bpGfx.fillStyle(0xf1c40f, 1); bpGfx.fillCircle(30, 10, 8); bpGfx.fillCircle(70, 12, 6); bpGfx.fillCircle(50, 5, 5); // Prickar
+    bpGfx.fillStyle(0xe67e22, 1); bpGfx.fillRoundedRect(40, 25, 20, 15, 4); // Stam
+    bpGfx.generateTexture('bouncepad16', 100, 40); bpGfx.destroy();
+
     // Stjärna
     const sGfx = scene.make.graphics();
     sGfx.fillStyle(0xf1c40f, 1); sGfx.fillRect(10,0,4,24); sGfx.fillRect(0,10,24,4);
@@ -262,8 +270,10 @@ function generateChunk(scene, cx, cy) {
     
     // Vi lägger in plattformar sporadiskt i denna region
     // Låt oss säga ca 3-5 plattformar per chunk för bra balans
-    const numPlatforms = 3 + Math.floor(Math.random() * 3);
     for(let i=0; i<numPlatforms; i++) {
+        // Ska denna plattform bli en ovanlig studsmatta? (Ca 1 på 20)
+        let isBouncepad = Math.random() < 0.05;
+
         // Tvinga dem isär lite inom chunken med försök
         let px, py;
         let valid = false;
@@ -276,6 +286,17 @@ function generateChunk(scene, cx, cy) {
             platforms.getChildren().forEach(ep => {
                 // Generösa avstånd så de inte hamnar i varandra
                 if (Math.abs(ep.x - px) < 180 && Math.abs(ep.y - py) < 130) overlap = true;
+                
+                // Om vi genererar OVANFÖR en existerande bouncepad, ska det vara fritt 1200px uppåt.
+                if (!isBouncepad && ep.getData('type') === 'bouncepad' && Math.abs(ep.x - px) < 120 && (py < ep.y && py > ep.y - 1200)) overlap = true;
+                
+                // Om VI ÄR en bouncepad och genererar UNDER något existerande.
+                if (isBouncepad && Math.abs(ep.x - px) < 120 && (ep.y < py && ep.y > py - 1200)) overlap = true;
+            });
+            
+            // Kolla så frukter inte är i vägen för bouncepaden uppåt.
+            fruitsGroup.getChildren().forEach(ep => {
+                if (isBouncepad && Math.abs(ep.x - px) < 120 && (ep.y < py && ep.y > py - 1200)) overlap = true;
             });
             
             // Hoppa över om vi är extremt nära spawn-regionen
@@ -289,7 +310,12 @@ function generateChunk(scene, cx, cy) {
         const rand = Math.random();
         let plat;
 
-        if (rand < 0.45) {
+        if (isBouncepad) {
+            plat = platforms.create(px, py, 'bouncepad16');
+            plat.setData('type', 'bouncepad');
+            // Placera högre depth så den syns tydligt ifall det skulle klippa med lianer
+            plat.setDepth(15);
+        } else if (rand < 0.45) {
             plat = platforms.create(px, py, 'leaf16');
             plat.setData('type', 'leaf');
         } else if (rand < 0.70) {
@@ -322,7 +348,7 @@ function generateChunk(scene, cx, cy) {
             }
             scene.tweens.add({ targets: plat, alpha: 0.7, yoyo: true, repeat: -1, duration: 500 });
         }
-        plat.refreshBody();
+        if (plat.refreshBody) plat.refreshBody();
 
         // Ev. stjärna ovanför
         if (Math.random() < 0.3) {
@@ -350,19 +376,34 @@ function onPlatformLand(p, plat) {
     
     if (!plat.body.enable) return;
 
-    p.setVelocityY(-700);
-    playSound('jump'); playSound('land');
-    
-    // Visuell Squash/Stretch 16-bit
-    this.tweens.add({ targets: p, scaleY: 0.7, scaleX: 1.2, duration: 60, yoyo: true, onComplete: () => {
-        this.tweens.add({ targets: p, scaleY: 1.1, scaleX: 0.9, duration: 80, yoyo: true });
-    }});
+    if (plat.getData('type') === 'bouncepad') {
+        p.setVelocityY(-1400); // SUPERSTUDDS!
+        playSound('superBounce');
+        this.cameras.main.shake(200, 0.02);
+        
+        // Bouncepad svamp-animation
+        this.tweens.add({ targets: plat, scaleY: 0.6, scaleX: 1.1, duration: 60, yoyo: true });
+        
+        // Stjärndamm
+        const px = this.add.particles(plat.x, plat.y, 'leafPart16', {
+            speed: {min:100, max:300}, angle:{min:220, max:320}, lifespan:700, alpha:{start:1, end:0}, tint: 0x9b59b6, scale:{start:1.5, end:0}, quantity:12, emitting:false
+        });
+        px.explode(12); this.time.delayedCall(1000, () => px.destroy());
+    } else {
+        p.setVelocityY(-700);
+        playSound('jump'); playSound('land');
+        
+        // Visuell Squash/Stretch 16-bit
+        this.tweens.add({ targets: p, scaleY: 0.7, scaleX: 1.2, duration: 60, yoyo: true, onComplete: () => {
+            this.tweens.add({ targets: p, scaleY: 1.1, scaleX: 0.9, duration: 80, yoyo: true });
+        }});
 
-    // Partiklar
-    const px = this.add.particles(plat.x, plat.y, 'leafPart16', {
-        speed: {min:40, max:100}, angle:{min:220, max:320}, lifespan:500, alpha:{start:1, end:0}, scale:{start:1, end:0.5}, quantity:6, emitting:false
-    });
-    px.explode(6); this.time.delayedCall(600, () => px.destroy());
+        // Partiklar
+        const px = this.add.particles(plat.x, plat.y, 'leafPart16', {
+            speed: {min:40, max:100}, angle:{min:220, max:320}, lifespan:500, alpha:{start:1, end:0}, scale:{start:1, end:0.5}, quantity:6, emitting:false
+        });
+        px.explode(6); this.time.delayedCall(600, () => px.destroy());
+    }
     
     scoreText.setText('⭐ ' + score);
     isRescued = false; isFalling = false;
