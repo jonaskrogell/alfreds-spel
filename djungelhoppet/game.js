@@ -96,13 +96,37 @@ function generateTextures(scene) {
     vGfx.fillStyle(0x27ae60, 1); vGfx.fillCircle(15, 9, 6); vGfx.fillCircle(95, 9, 6); // Grön mossa
     vGfx.generateTexture('vine16', 110, 26); vGfx.destroy();
 
-    // Guld-frukt
+    // Guld-frukt (Apelsin)
     const fGfx = scene.make.graphics();
     fGfx.fillStyle(0xf39c12, 1); fGfx.fillCircle(20, 22, 16);
     fGfx.fillStyle(0xf1c40f, 1); fGfx.fillCircle(20, 20, 16);
     fGfx.fillStyle(0xffffff, 1); fGfx.fillCircle(14, 14, 4); // Highlight
     fGfx.fillStyle(0x229954, 1); fGfx.fillTriangle(20, 6, 26, 0, 28, 8); // Topplöv
     fGfx.generateTexture('fruit16', 40, 40); fGfx.destroy();
+
+    // Chili-frukt (Röd, dash)
+    const chGfx = scene.make.graphics();
+    chGfx.fillStyle(0xc0392b, 1); chGfx.fillEllipse(20, 22, 18, 10);
+    chGfx.fillStyle(0xe74c3c, 1); chGfx.fillEllipse(20, 20, 18, 10);
+    chGfx.fillStyle(0xffffff, 1); chGfx.fillEllipse(15, 18, 6, 3);
+    chGfx.fillStyle(0x27ae60, 1); chGfx.fillRect(36, 17, 6, 4); // Grön stjälk
+    chGfx.generateTexture('chili16', 45, 30); chGfx.destroy();
+
+    // Melon-frukt (Gör dig stor)
+    const mGfx = scene.make.graphics();
+    mGfx.fillStyle(0x27ae60, 1); mGfx.fillArc(25, 25, 22, 0, Math.PI, false); // Grön skalk
+    mGfx.fillStyle(0xe74c3c, 1); mGfx.fillArc(25, 23, 19, 0, Math.PI, false); // Rött inkråm
+    mGfx.fillStyle(0x000000, 1); mGfx.fillCircle(15, 30, 2); mGfx.fillCircle(25, 35, 2); mGfx.fillCircle(35, 30, 2); // Kärnor
+    mGfx.generateTexture('melon16', 50, 50); mGfx.destroy();
+
+    // Gren-plattform (Trä)
+    const bGfx = scene.make.graphics();
+    bGfx.fillStyle(0x5d4037, 1); bGfx.fillRoundedRect(0, 5, 150, 20, 8);
+    bGfx.fillStyle(0x795548, 1); bGfx.fillRoundedRect(0, 0, 150, 18, 8);
+    bGfx.fillStyle(0x3e2723, 1); 
+    bGfx.fillRect(20, 5, 40, 2); bGfx.fillRect(80, 10, 50, 2); // Trämönster
+    bGfx.fillStyle(0x2ecc71, 1); bGfx.fillCircle(10, 10, 8); bGfx.fillCircle(140, 5, 6); // Lite mossa
+    bGfx.generateTexture('branch16', 150, 26); bGfx.destroy();
 
     // Stjärna
     const sGfx = scene.make.graphics();
@@ -111,13 +135,13 @@ function generateTextures(scene) {
     sGfx.generateTexture('star16', 24, 24); sGfx.destroy();
 
     // Apa
-    const mGfx = scene.make.graphics();
-    mGfx.fillStyle(0x5d4037, 1); mGfx.fillCircle(24, 24, 20); // Huvud
-    mGfx.fillStyle(0x8d6e63, 1); mGfx.fillCircle(24, 28, 14); // Ljus Nosing
-    mGfx.fillStyle(0x8d6e63, 1); mGfx.fillCircle(4, 24, 8); mGfx.fillCircle(44, 24, 8); // Öron
-    mGfx.fillStyle(0xffffff, 1); mGfx.fillCircle(16, 18, 6); mGfx.fillCircle(32, 18, 6); // Ögonvita
-    mGfx.fillStyle(0x000000, 1); mGfx.fillCircle(17, 17, 3); mGfx.fillCircle(31, 17, 3);
-    mGfx.generateTexture('monkey16', 48, 48); mGfx.destroy();
+    const moGfx = scene.make.graphics();
+    moGfx.fillStyle(0x5d4037, 1); moGfx.fillCircle(24, 24, 20); // Huvud
+    moGfx.fillStyle(0x8d6e63, 1); moGfx.fillCircle(24, 28, 14); // Ljus Nosing
+    moGfx.fillStyle(0x8d6e63, 1); moGfx.fillCircle(4, 24, 8); moGfx.fillCircle(44, 24, 8); // Öron
+    moGfx.fillStyle(0xffffff, 1); moGfx.fillCircle(16, 18, 6); moGfx.fillCircle(32, 18, 6); // Ögonvita
+    moGfx.fillStyle(0x000000, 1); moGfx.fillCircle(17, 17, 3); moGfx.fillCircle(31, 17, 3);
+    moGfx.generateTexture('monkey16', 48, 48); moGfx.destroy();
 
     // Moln
     const cGfx = scene.make.graphics();
@@ -222,27 +246,55 @@ function generateChunk(scene, cx, cy) {
     const numPlatforms = 3 + Math.floor(Math.random() * 3);
     for(let i=0; i<numPlatforms; i++) {
         // Tvinga dem isär lite inom chunken med försök
-        let px = startX + 50 + Math.random() * (CHUNK_SIZE - 100);
-        let py = startY + 50 + Math.random() * (CHUNK_SIZE - 100);
+        let px, py;
+        let valid = false;
+        for(let attempts=0; attempts<15; attempts++) {
+            px = startX + 50 + Math.random() * (CHUNK_SIZE - 100);
+            py = startY + 50 + Math.random() * (CHUNK_SIZE - 100);
+            
+            // Kolla så det inte är för nära en existerande plattform
+            let overlap = false;
+            platforms.getChildren().forEach(ep => {
+                // Generösa avstånd så de inte hamnar i varandra
+                if (Math.abs(ep.x - px) < 180 && Math.abs(ep.y - py) < 130) overlap = true;
+            });
+            
+            // Hoppa över om vi är extremt nära spawn-regionen
+            if (Math.abs(px - (scene.scale.width/2)) < 150 && Math.abs(py - (scene.scale.height/2 - 50)) < 150) overlap = true;
+
+            if (!overlap) { valid = true; break; }
+        }
         
-        // Hoppa över om vi är extremt nära spawn-regionen
-        if (Math.abs(px - (scene.scale.width/2)) < 150 && Math.abs(py - (scene.scale.height/2 - 50)) < 150) continue;
+        if (!valid) continue; // Hoppa över om chuken var för full
 
         const rand = Math.random();
         let plat;
 
-        if (rand < 0.65) {
+        if (rand < 0.45) {
             plat = platforms.create(px, py, 'leaf16');
             plat.setData('type', 'leaf');
-        } else if (rand < 0.90) {
+        } else if (rand < 0.70) {
+            plat = platforms.create(px, py, 'branch16');
+            plat.setData('type', 'branch');
+        } else if (rand < 0.85) {
             plat = platforms.create(px, py, 'vine16');
             plat.setData('type', 'vine');
             plat.setData('startX', px);
             plat.setData('swingSpeed', 1.0 + Math.random());
             plat.setData('swingPhase', Math.random() * Math.PI*2);
         } else {
-            plat = platforms.create(px, py, 'fruit16');
-            plat.setData('type', 'fruit');
+            // Frukter
+            const fRand = Math.random();
+            if (fRand < 0.4) {
+                plat = platforms.create(px, py, 'fruit16');
+                plat.setData('type', 'fruit');
+            } else if (fRand < 0.7) {
+                plat = platforms.create(px, py, 'chili16');
+                plat.setData('type', 'chili');
+            } else {
+                plat = platforms.create(px, py, 'melon16');
+                plat.setData('type', 'melon');
+            }
             scene.tweens.add({ targets: plat, alpha: 0.7, yoyo: true, repeat: -1, duration: 500 });
         }
         plat.refreshBody();
@@ -275,14 +327,44 @@ function onPlatformLand(p, plat) {
     if (!plat.body.enable) return;
 
     if (plat.getData('type') === 'fruit') {
-        p.setVelocityY(-1200); // SUPERSTUDDS
+        p.setVelocityY(-1400); // SUPERSTUDDS
         playSound('superBounce');
         this.cameras.main.shake(150, 0.015);
         
-        // Tillfälligt gömd
         plat.body.enable = false; plat.setVisible(false);
         this.time.delayedCall(1500, () => { if(isStarted) { plat.body.enable = true; plat.setVisible(true); } });
         score += 5;
+    } else if (plat.getData('type') === 'chili') {
+        p.setVelocityY(-400);
+        // Chili ger en enorm DASH framåt!
+        let dir = (p.body.velocity.x >= 0 ? 1 : -1); 
+        p.setVelocityX(dir * 1800);
+        playSound('jump'); playSound('superBounce');
+        this.cameras.main.shake(100, 0.015);
+        
+        plat.body.enable = false; plat.setVisible(false);
+        this.time.delayedCall(1500, () => { if(isStarted) { plat.body.enable = true; plat.setVisible(true); } });
+        score += 10;
+        
+        // Eld-partiklar
+        const px = this.add.particles(p.x, p.y, 'leafPart16', {
+            speed: {min:100, max:300}, angle:{min:160, max:200}, lifespan:400, alpha:{start:1, end:0}, tint: 0xff3300, scale:{start:1.5, end:0}, quantity:15, emitting:false
+        });
+        px.explode(15); this.time.delayedCall(500, () => px.destroy());
+
+    } else if (plat.getData('type') === 'melon') {
+        p.setVelocityY(-1000); // Bra studs
+        playSound('superBounce');
+        
+        // Melonen gör dig stooor! Lättare att träffa plattformar.
+        this.tweens.add({ targets: p, scaleX: 1.8, scaleY: 1.8, duration: 400, ease: 'Elastic.easeOut' });
+        this.time.delayedCall(5000, () => {
+            if (p.scene) this.tweens.add({ targets: p, scaleX: 1, scaleY: 1, duration: 400, ease: 'Sine.easeInOut' });
+        });
+        
+        plat.body.enable = false; plat.setVisible(false);
+        this.time.delayedCall(1500, () => { if(isStarted) { plat.body.enable = true; plat.setVisible(true); } });
+        score += 8;
     } else {
         p.setVelocityY(-700);
         playSound('jump'); playSound('land');
