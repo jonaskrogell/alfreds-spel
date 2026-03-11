@@ -538,7 +538,7 @@ function collectFruit(p, plat) {
         
         // Melonen gör dig stooor
         this.tweens.add({ targets: p, scaleX: 1.8, scaleY: 1.8, duration: 400, ease: 'Elastic.easeOut' });
-        this.time.delayedCall(5000, () => {
+        this.time.delayedCall(20000, () => {
             if (p) this.tweens.add({ targets: p, scaleX: 1, scaleY: 1, duration: 400, ease: 'Sine.easeInOut' });
         });
         score += 8;
@@ -549,7 +549,7 @@ function collectFruit(p, plat) {
         
         // Anti-gravity float: blåbäret gör grodan lätt som en fjäder
         p.body.setGravityY(-700); 
-        this.time.delayedCall(3000, () => {
+        this.time.delayedCall(20000, () => {
             if (p && p.body) p.body.setGravityY(0); 
         });
         score += 8;
