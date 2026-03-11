@@ -200,18 +200,9 @@ function create() {
     starsGroup = this.physics.add.group({ allowGravity: false });
 
     // Spelare
-    player = this.physics.add.sprite(W/2, H/2 - 50, 'player16');
+    player = this.physics.add.sprite(W/2, 350, 'player16');
     player.setBounce(0).setDepth(10);
     player.body.setSize(38, 38).setOffset(5, 5);
-
-    // Initial Chunk (x=0, y=0 och närliggande)
-    generateChunk(this, 0, 0);
-    generateChunk(this, 0, -1);
-    
-    // Fysisk startplattform PRECIS under spelaren
-    const startPlat = platforms.create(player.x, player.y + 100, 'leaf16');
-    startPlat.setData('type', 'leaf');
-    startPlat.setScale(1.5).refreshBody();
 
     this.physics.add.collider(player, platforms, onPlatformLand, null, this);
     this.physics.add.overlap(player, fruitsGroup, collectFruit, null, this);
@@ -267,6 +258,35 @@ function generateChunk(scene, cx, cy) {
     // En chunk är CHUNK_SIZE x CHUNK_SIZE pixlar stor
     const startX = cx * CHUNK_SIZE;
     const startY = cy * CHUNK_SIZE;
+
+    // MARKNIVÅ (Inga hål, solid mark)
+    if (cy >= 0) {
+        let ground = platforms.create(startX + CHUNK_SIZE/2, 400, 'pixel');
+        ground.setScale(CHUNK_SIZE/8 + 1, 10).refreshBody();
+        ground.setTint(0x27ae60);
+        ground.setData('type', 'ground');
+        
+        // Dekorativa träd
+        for(let j=0; j<4; j++) {
+            let tx = startX + Math.random() * CHUNK_SIZE;
+            scene.add.sprite(tx, 380, 'branch16').setDepth(5).setScale(0.6).setAngle(90).setTint(0x27ae60);
+        }
+        return; // Avbryt vanliga plattformar här nere
+    }
+    
+    // RYMD OCH SOL (Vinstnivå)
+    if (cy <= -33) {
+        if (!scene.sunCreated && Math.abs(cx - Math.floor(player.x/CHUNK_SIZE)) <= 1) {
+            scene.sunCreated = true;
+            let sun = fruitsGroup.create(player.x, -20000, 'fruit16');
+            sun.setData('type', 'sun');
+            sun.setScale(15).refreshBody();
+            sun.setTint(0xffeb3b);
+            scene.tweens.add({ targets: sun, scaleX: 18, scaleY: 18, yoyo: true, repeat: -1, duration: 1500 });
+            scene.tweens.add({ targets: sun, angle: 360, repeat: -1, duration: 6000 });
+        }
+        return; // Inga plattformar över solen
+    }
     
     // Vi lägger in plattformar sporadiskt i denna region
     // Låt oss säga ca 3-5 plattformar per chunk för bra balans
@@ -414,6 +434,20 @@ function onPlatformLand(p, plat) {
 function collectFruit(p, plat) {
     if (!plat.body.enable) return;
 
+    if (plat.getData('type') === 'sun') {
+        // VINST!
+        isStarted = false;
+        p.setVelocity(0, 0);
+        p.body.setAllowGravity(false);
+        this.tweens.add({ targets: p, scaleX: 3, scaleY: 3, angle: 720, alpha: 0, duration: 2500 });
+        playSound('superBounce');
+        plat.body.enable = false;
+        
+        let winText = this.add.text(p.x, p.y + 150, 'DU KLARADE SPELET!\nGrod-apan nådde solen! ☀️\nLadda om för att spela igen.', { fontSize: '32px', fontFamily: 'Courier', color: '#fff', align: 'center', stroke:'#000', strokeThickness:6 }).setOrigin(0.5).setDepth(40);
+        this.tweens.add({ targets: winText, scale: 1.2, duration: 800, yoyo:true, repeat: -1});
+        return;
+    }
+
     if (plat.getData('type') === 'fruit') {
         p.setVelocityY(Math.min(p.body.velocity.y, 0) - 900); // SUPERSTUDDS åt det håll man är på väg
         playSound('superBounce');
@@ -486,6 +520,9 @@ function collectStar(p, star) {
 function update(time, delta) {
     if (!isStarted) return;
     const H = this.scale.height;
+
+    // Updatera miljö och färg beroende på hur högt (y) man kommit
+    updateBackgroundAndEnv(this, player.y);
 
     // Rörelse Kontroller
     const speed = 400;
@@ -612,6 +649,56 @@ function monkeyRescue(scene) {
             });
         }
     });
+}
+
+function updateBackgroundAndEnv(scene, y) {
+    let color;
+    if (y > 0) color = Phaser.Display.Color.HexStringToColor('#5dade2'); // Ljusblå
+    else if (y > -5000) {
+        let f = Math.max(0, -y / 5000);
+        color = Phaser.Display.Color.Interpolate.ColorWithColor(
+            Phaser.Display.Color.HexStringToColor('#5dade2'),
+            Phaser.Display.Color.HexStringToColor('#2980b9'), 1, f);
+    } else if (y > -10000) {
+        let f = Math.max(0, -(y + 5000) / 5000);
+        color = Phaser.Display.Color.Interpolate.ColorWithColor(
+            Phaser.Display.Color.HexStringToColor('#2980b9'),
+            Phaser.Display.Color.HexStringToColor('#154360'), 1, f);
+    } else if (y > -15000) {
+        let f = Math.max(0, -(y + 10000) / 5000);
+        color = Phaser.Display.Color.Interpolate.ColorWithColor(
+            Phaser.Display.Color.HexStringToColor('#154360'),
+            Phaser.Display.Color.HexStringToColor('#000000'), 1, f);
+    } else {
+        color = Phaser.Display.Color.HexStringToColor('#000000'); 
+    }
+    
+    let colObj = (typeof color === 'object') ? color : Phaser.Display.Color.IntegerToColor(color);
+    scene.cameras.main.setBackgroundColor(colObj);
+    
+    // Rymd-stjärnor
+    if (y < -12000) {
+        if (!scene.spaceStars) {
+            scene.spaceStars = scene.add.particles(0, 0, 'pixel', {
+                x: { min: -1000, max: 1000 },
+                y: { min: -1000, max: 1000 },
+                lifespan: 3000,
+                alpha: { start: 0, end: 1, yoyo: true },
+                scale: { min: 0.1, max: 0.4 },
+                quantity: 4,
+                blendMode: 'ADD'
+            });
+            scene.spaceStars.setDepth(-1);
+        }
+        scene.spaceStars.setPosition(player.x, player.y);
+    } else if (scene.spaceStars) {
+        scene.spaceStars.destroy();
+        scene.spaceStars = null;
+    }
+    
+    // Tona ut skogen ju högre upp man kommer
+    let depthFactor = Math.max(0, Math.min(1, (y + 5000) / 5000)); 
+    bgLayers.forEach(layer => layer.sprite.setAlpha(0.5 * depthFactor));
 }
 
 // ===================== TILLBAKA & HJÄLP =====================
