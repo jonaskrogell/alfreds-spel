@@ -58,7 +58,7 @@ const config = {
 const game = new Phaser.Game(config);
 
 // Spel-variabler
-let player, platforms, cursors, score = 0, highestY = 0, starsGroup, startText;
+let player, platforms, fruitsGroup, cursors, score = 0, highestY = 0, starsGroup, startText;
 let scoreText, distText, isStarted = false, isFalling = false, isRescued = false;
 let touchLeft = false, touchRight = false;
 let bgLayers = [], guideParticles, safetyCloud;
@@ -121,6 +121,21 @@ function generateTextures(scene) {
     mGfx.fillStyle(0x000000, 1); mGfx.fillCircle(15, 30, 2); mGfx.fillCircle(25, 35, 2); mGfx.fillCircle(35, 30, 2); // Kärnor
     mGfx.generateTexture('melon16', 50, 50); mGfx.destroy();
 
+    // Blåbär (Lättvikt/flyt)
+    const bbGfx = scene.make.graphics();
+    bbGfx.fillStyle(0x2980b9, 1); bbGfx.fillCircle(15, 15, 12);
+    bbGfx.fillStyle(0x3498db, 1); bbGfx.fillCircle(13, 13, 12);
+    bbGfx.fillStyle(0x1abc9c, 1); bbGfx.fillTriangle(15, 0, 20, 5, 10, 5); // Topplöv
+    bbGfx.fillStyle(0xffffff, 1); bbGfx.fillCircle(10, 8, 3); // Blänk
+    bbGfx.generateTexture('blueberry16', 30, 30); bbGfx.destroy();
+
+    // Banan (Bonus points)
+    const baGfx = scene.make.graphics();
+    baGfx.fillStyle(0xf1c40f, 1); baGfx.fillEllipse(20, 20, 20, 10);
+    baGfx.fillStyle(0xf39c12, 1); baGfx.fillEllipse(20, 23, 18, 8); // skugga
+    baGfx.fillStyle(0x111111, 1); baGfx.fillRect(36, 18, 4, 4); // Tip
+    baGfx.generateTexture('banana16', 40, 40); baGfx.destroy();
+
     // Gren-plattform (Trä)
     const bGfx = scene.make.graphics();
     bGfx.fillStyle(0x5d4037, 1); bGfx.fillRoundedRect(0, 5, 150, 20, 8);
@@ -173,6 +188,7 @@ function create() {
     }
 
     platforms = this.physics.add.staticGroup();
+    fruitsGroup = this.physics.add.staticGroup();
     starsGroup = this.physics.add.group({ allowGravity: false });
 
     // Spelare
@@ -190,6 +206,7 @@ function create() {
     startPlat.setScale(1.5).refreshBody();
 
     this.physics.add.collider(player, platforms, onPlatformLand, null, this);
+    this.physics.add.overlap(player, fruitsGroup, collectFruit, null, this);
     this.physics.add.overlap(player, starsGroup, collectStar, null, this);
 
     // Camera setup - Följ spelaren både vertikalt och horisontellt! (ändlöst åt alla håll)
@@ -287,15 +304,21 @@ function generateChunk(scene, cx, cy) {
         } else {
             // Frukter
             const fRand = Math.random();
-            if (fRand < 0.4) {
-                plat = platforms.create(px, py, 'fruit16');
+            if (fRand < 0.25) {
+                plat = fruitsGroup.create(px, py, 'fruit16');
                 plat.setData('type', 'fruit');
-            } else if (fRand < 0.7) {
-                plat = platforms.create(px, py, 'chili16');
+            } else if (fRand < 0.45) {
+                plat = fruitsGroup.create(px, py, 'chili16');
                 plat.setData('type', 'chili');
-            } else {
-                plat = platforms.create(px, py, 'melon16');
+            } else if (fRand < 0.65) {
+                plat = fruitsGroup.create(px, py, 'melon16');
                 plat.setData('type', 'melon');
+            } else if (fRand < 0.85) {
+                plat = fruitsGroup.create(px, py, 'blueberry16');
+                plat.setData('type', 'blueberry');
+            } else {
+                plat = fruitsGroup.create(px, py, 'banana16');
+                plat.setData('type', 'banana');
             }
             scene.tweens.add({ targets: plat, alpha: 0.7, yoyo: true, repeat: -1, duration: 500 });
         }
@@ -325,27 +348,43 @@ function onPlatformLand(p, plat) {
     if (p.body.velocity.y < 0) return;
     if (p.body.y + p.body.height > plat.body.y + 20) return;
     
-    // Göm undvik om fruit är "disable"
+    if (!plat.body.enable) return;
+
+    p.setVelocityY(-700);
+    playSound('jump'); playSound('land');
+    
+    // Visuell Squash/Stretch 16-bit
+    this.tweens.add({ targets: p, scaleY: 0.7, scaleX: 1.2, duration: 60, yoyo: true, onComplete: () => {
+        this.tweens.add({ targets: p, scaleY: 1.1, scaleX: 0.9, duration: 80, yoyo: true });
+    }});
+
+    // Partiklar
+    const px = this.add.particles(plat.x, plat.y, 'leafPart16', {
+        speed: {min:40, max:100}, angle:{min:220, max:320}, lifespan:500, alpha:{start:1, end:0}, scale:{start:1, end:0.5}, quantity:6, emitting:false
+    });
+    px.explode(6); this.time.delayedCall(600, () => px.destroy());
+    
+    scoreText.setText('⭐ ' + score);
+    isRescued = false; isFalling = false;
+    lastProgressTime = Date.now();
+    lastProgressY = p.y;
+}
+
+function collectFruit(p, plat) {
     if (!plat.body.enable) return;
 
     if (plat.getData('type') === 'fruit') {
-        p.setVelocityY(-1400); // SUPERSTUDDS
+        p.setVelocityY(Math.min(p.body.velocity.y, 0) - 900); // SUPERSTUDDS åt det håll man är på väg
         playSound('superBounce');
         this.cameras.main.shake(150, 0.015);
-        
-        plat.body.enable = false; plat.setVisible(false);
-        this.time.delayedCall(1500, () => { if(isStarted) { plat.body.enable = true; plat.setVisible(true); } });
         score += 5;
+
     } else if (plat.getData('type') === 'chili') {
-        p.setVelocityY(-400);
-        // Chili ger en enorm DASH framåt!
+        p.setVelocityY(-400); // Litet skutt
         let dir = (p.body.velocity.x >= 0 ? 1 : -1); 
-        p.setVelocityX(dir * 1800);
+        p.setVelocityX(dir * 1800); // Enorm DASH!
         playSound('jump'); playSound('superBounce');
         this.cameras.main.shake(100, 0.015);
-        
-        plat.body.enable = false; plat.setVisible(false);
-        this.time.delayedCall(1500, () => { if(isStarted) { plat.body.enable = true; plat.setVisible(true); } });
         score += 10;
         
         // Eld-partiklar
@@ -355,36 +394,43 @@ function onPlatformLand(p, plat) {
         px.explode(15); this.time.delayedCall(500, () => px.destroy());
 
     } else if (plat.getData('type') === 'melon') {
-        p.setVelocityY(-1000); // Bra studs
+        p.setVelocityY(Math.min(p.body.velocity.y, 0) - 500); // Mindre extrastuds
         playSound('superBounce');
         
-        // Melonen gör dig stooor! Lättare att träffa plattformar.
+        // Melonen gör dig stooor
         this.tweens.add({ targets: p, scaleX: 1.8, scaleY: 1.8, duration: 400, ease: 'Elastic.easeOut' });
         this.time.delayedCall(5000, () => {
-            if (p.scene) this.tweens.add({ targets: p, scaleX: 1, scaleY: 1, duration: 400, ease: 'Sine.easeInOut' });
+            if (p) this.tweens.add({ targets: p, scaleX: 1, scaleY: 1, duration: 400, ease: 'Sine.easeInOut' });
         });
-        
-        plat.body.enable = false; plat.setVisible(false);
-        this.time.delayedCall(1500, () => { if(isStarted) { plat.body.enable = true; plat.setVisible(true); } });
         score += 8;
-    } else {
-        p.setVelocityY(-700);
-        playSound('jump'); playSound('land');
-        
-        // Visuell Squash/Stretch 16-bit
-        this.tweens.add({ targets: p, scaleY: 0.7, scaleX: 1.2, duration: 60, yoyo: true, onComplete: () => {
-            this.tweens.add({ targets: p, scaleY: 1.1, scaleX: 0.9, duration: 80, yoyo: true });
-        }});
 
-        // Partiklar
-        const px = this.add.particles(plat.x, plat.y, 'leafPart16', {
-            speed: {min:40, max:100}, angle:{min:220, max:320}, lifespan:500, alpha:{start:1, end:0}, scale:{start:1, end:0.5}, quantity:6, emitting:false
+    } else if (plat.getData('type') === 'blueberry') {
+        p.setVelocityY(-500); 
+        playSound('collect');
+        
+        // Anti-gravity float: blåbäret gör grodan lätt som en fjäder
+        p.body.setGravityY(-700); 
+        this.time.delayedCall(3000, () => {
+            if (p && p.body) p.body.setGravityY(0); 
         });
-        px.explode(6); this.time.delayedCall(600, () => px.destroy());
+        score += 8;
+
+    } else if (plat.getData('type') === 'banana') {
+        playSound('superBounce');
+        score += 50;
+        
+        // Konfetti-explosion
+        const px = this.add.particles(p.x, p.y, 'leafPart16', {
+            speed: {min:150, max:400}, lifespan:1500, scale:{start:1.5, end:0}, tint: [0xf1c40f, 0x3498db, 0xe74c3c, 0x2ecc71], quantity:30, emitting:false, gravityY: 600
+        });
+        px.explode(30); this.time.delayedCall(1600, () => px.destroy());
     }
+
+    // Göm tillfälligt
+    plat.body.enable = false; plat.setVisible(false);
+    this.time.delayedCall(2000, () => { if(isStarted && plat) { plat.body.enable = true; plat.setVisible(true); } });
     
     scoreText.setText('⭐ ' + score);
-    isRescued = false; isFalling = false;
     lastProgressTime = Date.now();
     lastProgressY = p.y;
 }
@@ -447,16 +493,17 @@ function update(time, delta) {
     const cleanupDist = CHUNK_SIZE * 3;
     platforms.getChildren().forEach(p => {
         if (Math.abs(p.x - player.x) > cleanupDist || Math.abs(p.y - player.y) > cleanupDist * 1.5) {
-            // Observera: Vi tar bort spriten från minnet. 
-            // Om de vandrar tillbaka måste vi regenerera chunk?
-            // Denna enkla infinite genererar EN gång per chunk ID. Går man långt tillbaka försvinner de permanent om man inte cleara chunk-id.
-            // Istället för destroy, låt Phaser hantera dem eller radera old chunks ID så de kan regeneras.
-            // För simplicity & oändlig exploration, radera ids som är extremt långt bort:
             let cx = Math.floor(p.x/CHUNK_SIZE), cy = Math.floor(p.y/CHUNK_SIZE);
             if(Math.abs(cx - currentChunkX) > 3 || Math.abs(cy - currentChunkY) > 4) {
                delete chunks[`${cx},${cy}`];
                p.destroy();
             }
+        }
+    });
+    
+    fruitsGroup.getChildren().forEach(p => {
+        if (Math.abs(p.x - player.x) > cleanupDist || Math.abs(p.y - player.y) > cleanupDist * 1.5) {
+            p.destroy();
         }
     });
 
