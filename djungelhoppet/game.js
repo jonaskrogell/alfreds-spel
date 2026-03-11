@@ -11,33 +11,33 @@ function playSound(type) {
     const now = audioCtx.currentTime;
     if (type === 'jump') {
         const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
-        osc.type = 'square'; osc.frequency.setValueAtTime(150, now); osc.frequency.exponentialRampToValueAtTime(300, now + 0.1);
-        gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
-        osc.connect(gain); gain.connect(audioCtx.destination); osc.start(now); osc.stop(now + 0.15);
+        osc.type = 'triangle'; osc.frequency.setValueAtTime(250, now); osc.frequency.exponentialRampToValueAtTime(500, now + 0.15);
+        gain.gain.setValueAtTime(0.2, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+        osc.connect(gain); gain.connect(audioCtx.destination); osc.start(now); osc.stop(now + 0.2);
     } else if (type === 'collect') {
         const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
-        osc.type = 'square'; osc.frequency.setValueAtTime(600, now); osc.frequency.setValueAtTime(800, now + 0.1);
-        gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
-        osc.connect(gain); gain.connect(audioCtx.destination); osc.start(now); osc.stop(now + 0.2);
+        osc.type = 'sine'; osc.frequency.setValueAtTime(800, now); osc.frequency.setValueAtTime(1200, now + 0.1);
+        gain.gain.setValueAtTime(0.15, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+        osc.connect(gain); gain.connect(audioCtx.destination); osc.start(now); osc.stop(now + 0.25);
     } else if (type === 'superBounce') {
         const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
-        osc.type = 'square'; osc.frequency.setValueAtTime(300, now); osc.frequency.exponentialRampToValueAtTime(800, now + 0.3);
-        gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+        osc.type = 'sine'; osc.frequency.setValueAtTime(400, now); osc.frequency.exponentialRampToValueAtTime(1000, now + 0.3);
+        gain.gain.setValueAtTime(0.2, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
         osc.connect(gain); gain.connect(audioCtx.destination); osc.start(now); osc.stop(now + 0.4);
     } else if (type === 'rescue') {
         const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
-        osc.type = 'sawtooth'; osc.frequency.setValueAtTime(200, now); osc.frequency.exponentialRampToValueAtTime(600, now + 0.4);
-        gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
-        osc.connect(gain); gain.connect(audioCtx.destination); osc.start(now); osc.stop(now + 0.5);
+        osc.type = 'sine'; osc.frequency.setValueAtTime(300, now); osc.frequency.exponentialRampToValueAtTime(800, now + 0.5);
+        gain.gain.setValueAtTime(0.2, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+        osc.connect(gain); gain.connect(audioCtx.destination); osc.start(now); osc.stop(now + 0.6);
     } else if (type === 'land') {
         const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
-        osc.type = 'triangle'; osc.frequency.setValueAtTime(100, now); osc.frequency.exponentialRampToValueAtTime(50, now + 0.1);
-        gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-        osc.connect(gain); gain.connect(audioCtx.destination); osc.start(now); osc.stop(now + 0.1);
+        osc.type = 'square'; osc.frequency.setValueAtTime(80, now); osc.frequency.exponentialRampToValueAtTime(40, now + 0.1);
+        gain.gain.setValueAtTime(0.05, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+        osc.connect(gain); gain.connect(audioCtx.destination); osc.start(now); osc.stop(now + 0.15);
     }
 }
 
-// ===================== PHASER CONFIG (8-BIT) =====================
+// ===================== PHASER CONFIG (16-BIT STYLE) =====================
 const config = {
     type: Phaser.AUTO,
     scale: {
@@ -46,8 +46,8 @@ const config = {
         width: '100%',
         height: '100%'
     },
-    backgroundColor: '#0d1f0d',
-    pixelArt: true,
+    backgroundColor: '#0f2027',
+    pixelArt: false, // Smooth sprites för "16-bit"-Snes-känsla
     physics: {
         default: 'arcade',
         arcade: { gravity: { y: 1200 }, debug: false }
@@ -58,326 +58,402 @@ const config = {
 const game = new Phaser.Game(config);
 
 // Spel-variabler
-let player, platforms, cursors, score = 0, distance = 0, starsGroup, startText;
-let scoreText, distText, isStarted = false, isRescued = false;
-let touchLeft = false, touchRight = false, lastPlatformX = 0;
-let bgLayers = [], cloudParticles, guideParticles;
-let monkeyActive = false, lastProgressTime = 0, lastProgressX = 0;
-let activeFruits = [];
+let player, platforms, cursors, score = 0, highestY = 0, starsGroup, startText;
+let scoreText, distText, isStarted = false, isFalling = false, isRescued = false;
+let touchLeft = false, touchRight = false;
+let bgLayers = [], guideParticles, safetyCloud;
+let monkeyActive = false, lastProgressTime = 0, lastProgressY = 0, lastProgressX = 0;
+let chunks = {}; // Håller reda på genererade chunks (både X och Y)
+const CHUNK_SIZE = 600;
 
-// ===================== TEXTUR-GENERERING (PIXEL ART) =====================
+// ===================== TEXTUR-GENERERING (16-BIT STYLE) =====================
 function preload() {}
 
-function generatePixelArt(scene) {
-    // Färg-palett
-    scene.textures.generate('player8', {
-        data: [
-            '..3333..',
-            '.333333.',
-            '67333376',
-            '33333333',
-            '.111111.',
-            '.1....1.',
-            '..3..3..',
-            '..3..3..'
-        ],
-        pixelWidth: 6, palette: { 1: '#44cc44', 3: '#33aa33', 6: '#ffffff', 7: '#111111' }
-    });
-    scene.textures.generate('leaf8', {
-        data: [
-            '.22222222222222.',
-            '2333333333333332',
-            '2111111111111112',
-            '.22222222222222.'
-        ],
-        pixelWidth: 8, palette: { 1: '#228822', 2: '#115511', 3: '#33aa33' }
-    });
-    scene.textures.generate('fruit8', {
-        data: [
-            '..8888..',
-            '.899998.',
-            '89969998',
-            '89999998',
-            '89999998',
-            '.899998.',
-            '..8888..'
-        ],
-        pixelWidth: 6, palette: { 8: '#ff8800', 9: '#ffaa00', 6: '#ffffff' }
-    });
-    scene.textures.generate('star8', {
-        data: [
-            '...8...',
-            '..868..',
-            '.88888.',
-            '8888888',
-            '..888..',
-            '.8...8.',
-            '8.....8'
-        ],
-        pixelWidth: 4, palette: { 8: '#ffdd44', 6: '#ffffff' }
-    });
-    scene.textures.generate('monkey8', {
-        data: [
-            '..4444..',
-            '.444444.',
-            '56444465',
-            '44444444',
-            '.555555.',
-            '.55..55.',
-            '..4..4..',
-            '..4..4..'
-        ],
-        pixelWidth: 6, palette: { 4: '#8B5A2B', 5: '#DEB887', 6: '#ffffff' }
-    });
+function generateTextures(scene) {
+    // Spelare (Grod-apa 16-bit stil) - Rund, skuggad, snyggare färger
+    const pGfx = scene.make.graphics();
+    pGfx.fillStyle(0x0f5e0f, 1); pGfx.fillCircle(24, 28, 20); // Mörk bottenSkugga
+    pGfx.fillStyle(0x2ecc71, 1); pGfx.fillCircle(24, 24, 20); // Grön bas
+    pGfx.fillStyle(0x52be80, 1); pGfx.fillCircle(24, 28, 12); // Ljus mage
+    // Ögon
+    pGfx.fillStyle(0xffffff, 1); pGfx.fillCircle(15, 16, 7); pGfx.fillCircle(33, 16, 7);
+    pGfx.fillStyle(0x000000, 1); pGfx.fillCircle(17, 16, 3); pGfx.fillCircle(31, 16, 3);
+    // Mun
+    pGfx.lineStyle(2, 0x1d8348); pGfx.beginPath(); pGfx.arc(24, 24, 10, 0.2, Math.PI - 0.2, false); pGfx.strokePath();
+    pGfx.generateTexture('player16', 48, 48); pGfx.destroy();
 
-    // Enkla rektanglar via Graphics
-    const p = scene.make.graphics();
-    p.fillStyle(0xffffff, 1); p.fillRect(0, 0, 8, 8); p.generateTexture('pixel', 8, 8);
-    p.destroy();
+    // Plattform (Blad, tjockare och skuggad)
+    const lGfx = scene.make.graphics();
+    lGfx.fillStyle(0x1e8449, 1); lGfx.fillRoundedRect(0, 4, 140, 22, 11);
+    lGfx.fillStyle(0x27ae60, 1); lGfx.fillRoundedRect(0, 0, 140, 20, 10);
+    lGfx.fillStyle(0x1e8449, 1); lGfx.fillRect(20, 10, 100, 2); // Nerv
+    lGfx.generateTexture('leaf16', 140, 26); lGfx.destroy();
+
+    // Lian
+    const vGfx = scene.make.graphics();
+    vGfx.fillStyle(0x784212, 1); vGfx.fillRoundedRect(0, 4, 110, 20, 10);
+    vGfx.fillStyle(0xa04000, 1); vGfx.fillRoundedRect(0, 0, 110, 18, 9);
+    vGfx.fillStyle(0x27ae60, 1); vGfx.fillCircle(15, 9, 6); vGfx.fillCircle(95, 9, 6); // Grön mossa
+    vGfx.generateTexture('vine16', 110, 26); vGfx.destroy();
+
+    // Guld-frukt
+    const fGfx = scene.make.graphics();
+    fGfx.fillStyle(0xf39c12, 1); fGfx.fillCircle(20, 22, 16);
+    fGfx.fillStyle(0xf1c40f, 1); fGfx.fillCircle(20, 20, 16);
+    fGfx.fillStyle(0xffffff, 1); fGfx.fillCircle(14, 14, 4); // Highlight
+    fGfx.fillStyle(0x229954, 1); fGfx.fillTriangle(20, 6, 26, 0, 28, 8); // Topplöv
+    fGfx.generateTexture('fruit16', 40, 40); fGfx.destroy();
+
+    // Stjärna
+    const sGfx = scene.make.graphics();
+    sGfx.fillStyle(0xf1c40f, 1); sGfx.fillRect(10,0,4,24); sGfx.fillRect(0,10,24,4);
+    sGfx.fillRect(4,4,16,16); sGfx.fillStyle(0xffffff, 1); sGfx.fillRect(6,6,4,4);
+    sGfx.generateTexture('star16', 24, 24); sGfx.destroy();
+
+    // Apa
+    const mGfx = scene.make.graphics();
+    mGfx.fillStyle(0x5d4037, 1); mGfx.fillCircle(24, 24, 20); // Huvud
+    mGfx.fillStyle(0x8d6e63, 1); mGfx.fillCircle(24, 28, 14); // Ljus Nosing
+    mGfx.fillStyle(0x8d6e63, 1); mGfx.fillCircle(4, 24, 8); mGfx.fillCircle(44, 24, 8); // Öron
+    mGfx.fillStyle(0xffffff, 1); mGfx.fillCircle(16, 18, 6); mGfx.fillCircle(32, 18, 6); // Ögonvita
+    mGfx.fillStyle(0x000000, 1); mGfx.fillCircle(17, 17, 3); mGfx.fillCircle(31, 17, 3);
+    mGfx.generateTexture('monkey16', 48, 48); mGfx.destroy();
+
+    // Moln
+    const cGfx = scene.make.graphics();
+    cGfx.fillStyle(0xbdc3c7, 1); cGfx.fillCircle(60, 40, 30); cGfx.fillCircle(30, 45, 20); cGfx.fillCircle(90, 45, 20);
+    cGfx.fillStyle(0xecf0f1, 1); cGfx.fillCircle(60, 35, 30); cGfx.fillCircle(30, 40, 20); cGfx.fillCircle(90, 40, 20);
+    cGfx.generateTexture('cloud16', 120, 70); cGfx.destroy();
+
+    // Partikel
+    const partGfx = scene.make.graphics();
+    partGfx.fillStyle(0x27ae60, 1); partGfx.fillCircle(4, 4, 4);
+    partGfx.generateTexture('leafPart16', 8, 8); partGfx.destroy();
+    
+    // Pixel för BG
+    const pxGfx = scene.make.graphics(); pxGfx.fillStyle(0xffffff,1); pxGfx.fillRect(0,0,8,8); pxGfx.generateTexture('pixel', 8, 8); pxGfx.destroy();
 }
 
 function create() {
-    generatePixelArt(this);
-    const W = this.scale.width;
-    const H = this.scale.height;
+    generateTextures(this);
+    const W = this.scale.width, H = this.scale.height;
 
-    // Bakgrund (Parallax)
+    // Gradient-ig horisont (parallax sky)
     for(let i=1; i<=3; i++) {
-        const bg = this.add.tileSprite(0, 0, W*5, H, 'pixel').setOrigin(0,0).setScrollFactor(i*0.1);
-        bg.setTint(i===1 ? 0x0a180a : (i===2 ? 0x1a3a1a : 0x2a5a2a));
-        bg.setAlpha(0.6);
-        bgLayers.push({ sprite: bg, speed: i*0.1 });
+        const bg = this.add.tileSprite(0, 0, W*5, H*5, 'pixel').setOrigin(0.5,0.5).setScrollFactor(i*0.2);
+        bg.setTint(i===1 ? 0x0f2027 : (i===2 ? 0x203a43 : 0x2c5364));
+        bg.setAlpha(0.5);
+        bgLayers.push({ sprite: bg, speed: i*0.2 });
     }
 
     platforms = this.physics.add.staticGroup();
     starsGroup = this.physics.add.group({ allowGravity: false });
 
-    // Startplattform
-    const startPlat = platforms.create(W/2, H - 100, 'leaf8');
-    startPlat.setData('type', 'leaf');
-    lastPlatformX = W/2;
-
-    // Generera skärmer framåt
-    for (let i=0; i<30; i++) generatePlatform(this);
-
     // Spelare
-    player = this.physics.add.sprite(W/2, H - 200, 'player8');
+    player = this.physics.add.sprite(W/2, H/2 - 50, 'player16');
     player.setBounce(0).setDepth(10);
-    player.body.setSize(player.width*0.8, player.height*0.8);
+    player.body.setSize(38, 38).setOffset(5, 5);
+
+    // Initial Chunk (x=0, y=0 och närliggande)
+    generateChunk(this, 0, 0);
+    generateChunk(this, 0, -1);
+    
+    // Fysisk startplattform PRECIS under spelaren
+    const startPlat = platforms.create(player.x, player.y + 100, 'leaf16');
+    startPlat.setData('type', 'leaf');
+    startPlat.setScale(1.5).refreshBody();
 
     this.physics.add.collider(player, platforms, onPlatformLand, null, this);
     this.physics.add.overlap(player, starsGroup, collectStar, null, this);
 
-    // UI
-    scoreText = this.add.text(20, 20, '⭐ 0', { fontSize: '24px', fontFamily: 'Courier', color: '#ffdd44' }).setScrollFactor(0).setDepth(20);
-    distText = this.add.text(20, 50, '🚩 0m', { fontSize: '18px', fontFamily: 'Courier', color: '#88ff88' }).setScrollFactor(0).setDepth(20);
+    // Camera setup - Följ spelaren både vertikalt och horisontellt! (ändlöst åt alla håll)
+    this.cameras.main.startFollow(player, true, 0.1, 0.1);
+    this.cameras.main.setLerp(0.1, 0.1);
 
-    startText = this.add.text(W/2, H/2 - 50, 'DJUNGELHOPPET\nTryck för start', { fontSize: '32px', fontFamily: 'Courier', color: '#fff', align: 'center', backgroundColor: '#000' }).setOrigin(0.5).setScrollFactor(0).setDepth(30);
+    // UI (fastklistrad på skärmen)
+    scoreText = this.add.text(20, 20, '⭐ 0', { fontSize: '28px', fontFamily: 'Courier', color: '#f1c40f', stroke:'#000', strokeThickness:4 }).setScrollFactor(0).setDepth(20);
+    distText = this.add.text(20, 60, '🌿 0m', { fontSize: '20px', fontFamily: 'Courier', color: '#2ecc71', stroke:'#000', strokeThickness:3 }).setScrollFactor(0).setDepth(20);
 
+    startText = this.add.text(W/2, H/2 - 150, 'DJUNGELHOPPET\nUtforska oändligt!\nTryck för start', { fontSize: '32px', fontFamily: 'Courier', color: '#fff', align: 'center', stroke:'#000', strokeThickness:6 }).setOrigin(0.5).setScrollFactor(0).setDepth(30);
+
+    // Säkerhetsmolnet i botten av VY
+    safetyCloud = this.physics.add.sprite(W/2, H + 100, 'cloud16');
+    safetyCloud.body.setAllowGravity(false);
+    safetyCloud.setVisible(false).setDepth(15);
+    safetyCloud.body.setSize(100, 30).setOffset(10, 25);
+
+    // Kontroller
     cursors = this.input.keyboard.createCursorKeys();
-
     this.input.on('pointerdown', (p) => {
         if(!isStarted) return startGameAction();
         if(p.x < W/2) touchLeft = true; else touchRight = true;
     });
     this.input.on('pointerup', () => { touchLeft = touchRight = false; });
-    
-    this.input.keyboard.on('keydown', (e) => {
-        if (!isStarted && e.code === 'Space') startGameAction();
+    this.input.on('pointermove', (p) => { if(p.isDown) { touchLeft = p.x < W/2; touchRight = p.x >= W/2; } });
+    this.input.keyboard.on('keydown', (e) => { if (!isStarted && e.code === 'Space') startGameAction(); });
+
+    // Events från parent
+    window.addEventListener('message', (e) => {
+        if (e.data && e.data.type === 'keydown') {
+            if (!isStarted) startGameAction();
+            if (e.data.code === 'ArrowLeft' || e.data.code === 'KeyA') { touchLeft = true; setTimeout(() => touchLeft = false, 150); }
+            if (e.data.code === 'ArrowRight' || e.data.code === 'KeyD') { touchRight = true; setTimeout(() => touchRight = false, 150); }
+        }
     });
 
-    this.cameras.main.setBounds(0, -H, Number.MAX_SAFE_INTEGER, H*2);
-    this.cameras.main.startFollow(player, true, 0.1, 0.1);
-    this.cameras.main.setFollowOffset(-W * 0.2, 0); // Spelaren är mer till vänster
+    // Start UI
+    highestY = player.y;
 }
 
-function generatePlatform(scene) {
-    const H = scene.scale.height;
-    // Slumpa Xavstånd och Y-position
-    const gapX = 120 + Math.random() * 100;
-    const x = lastPlatformX + gapX;
+// ===================== GENERERA CHUNKS (ÄNDLÖS I X OCH Y) =====================
+function getChunkId(cx, cy) { return `${cx},${cy}`; }
+
+function generateChunk(scene, cx, cy) {
+    const id = getChunkId(cx, cy);
+    if (chunks[id]) return; // Redan skapad
+    chunks[id] = true;
+
+    // En chunk är CHUNK_SIZE x CHUNK_SIZE pixlar stor
+    const startX = cx * CHUNK_SIZE;
+    const startY = cy * CHUNK_SIZE;
     
-    // Slumpa höjd, sträva mot mitten
-    let y = (H/2) + (Math.random() - 0.5) * (H * 0.6);
-    
-    // Antal plattformar i "kolumnen"
-    const num = Math.random() < 0.4 ? 2 : 1;
-    for(let i=0; i<num; i++) {
-        let py = y + (i * 200 * (Math.random() > 0.5 ? 1 : -1));
-        if (py > H - 50) py = H - 50;
-        if (py < 100) py = 100;
+    // Vi lägger in plattformar sporadiskt i denna region
+    // Låt oss säga ca 3-5 plattformar per chunk för bra balans
+    const numPlatforms = 3 + Math.floor(Math.random() * 3);
+    for(let i=0; i<numPlatforms; i++) {
+        // Tvinga dem isär lite inom chunken med försök
+        let px = startX + 50 + Math.random() * (CHUNK_SIZE - 100);
+        let py = startY + 50 + Math.random() * (CHUNK_SIZE - 100);
         
+        // Hoppa över om vi är extremt nära spawn-regionen
+        if (Math.abs(px - (scene.scale.width/2)) < 150 && Math.abs(py - (scene.scale.height/2 - 50)) < 150) continue;
+
         const rand = Math.random();
         let plat;
-        if(rand < 0.8) {
-            plat = platforms.create(x, py, 'leaf8');
+
+        if (rand < 0.65) {
+            plat = platforms.create(px, py, 'leaf16');
             plat.setData('type', 'leaf');
+        } else if (rand < 0.90) {
+            plat = platforms.create(px, py, 'vine16');
+            plat.setData('type', 'vine');
+            plat.setData('startX', px);
+            plat.setData('swingSpeed', 1.0 + Math.random());
+            plat.setData('swingPhase', Math.random() * Math.PI*2);
         } else {
-            plat = platforms.create(x, py, 'fruit8');
+            plat = platforms.create(px, py, 'fruit16');
             plat.setData('type', 'fruit');
-            scene.tweens.add({ targets: plat, alpha: 0.5, yoyo: true, repeat: -1, duration: 400 });
+            scene.tweens.add({ targets: plat, alpha: 0.7, yoyo: true, repeat: -1, duration: 500 });
         }
         plat.refreshBody();
 
+        // Ev. stjärna ovanför
         if (Math.random() < 0.3) {
-            const star = scene.physics.add.sprite(x, py - 60, 'star8');
-            scene.tweens.add({ targets: star, y: py - 70, yoyo: true, repeat: -1, duration: 500 });
+            const star = scene.physics.add.sprite(px, py - 60, 'star16');
+            scene.tweens.add({ targets: star, y: py - 75, duration: 1000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
             starsGroup.add(star);
         }
     }
-    lastPlatformX = x;
 }
 
+// ===================== SPELSTART & LOGIK =====================
 function startGameAction() {
     isStarted = true;
     initAudio();
-    startText.destroy();
+    if(startText) { startText.destroy(); startText = null; }
     player.setVelocityY(-600);
     playSound('jump');
     lastProgressTime = Date.now();
-    lastProgressX = player.x;
+    lastProgressY = player.y;
 }
 
 function onPlatformLand(p, plat) {
     if (p.body.velocity.y < 0) return;
     if (p.body.y + p.body.height > plat.body.y + 20) return;
+    
+    // Göm undvik om fruit är "disable"
+    if (!plat.body.enable) return;
 
     if (plat.getData('type') === 'fruit') {
-        p.setVelocityY(-1000); // Superhopp
+        p.setVelocityY(-1200); // SUPERSTUDDS
         playSound('superBounce');
-        this.cameras.main.shake(100, 0.01);
+        this.cameras.main.shake(150, 0.015);
         
-        // Återskapning logik
-        plat.body.enable = false;
-        plat.setVisible(false);
-        this.time.delayedCall(1500, () => {
-            if (plat && plat.scene) { plat.body.enable = true; plat.setVisible(true); plat.refreshBody(); }
-        });
+        // Tillfälligt gömd
+        plat.body.enable = false; plat.setVisible(false);
+        this.time.delayedCall(1500, () => { if(isStarted) { plat.body.enable = true; plat.setVisible(true); } });
         score += 5;
     } else {
-        p.setVelocityY(-600);
-        playSound('jump');
-        // Visuell studs
-        this.tweens.add({ targets: p, scaleY: 0.7, scaleX: 1.3, duration: 50, yoyo: true });
+        p.setVelocityY(-700);
+        playSound('jump'); playSound('land');
+        
+        // Visuell Squash/Stretch 16-bit
+        this.tweens.add({ targets: p, scaleY: 0.7, scaleX: 1.2, duration: 60, yoyo: true, onComplete: () => {
+            this.tweens.add({ targets: p, scaleY: 1.1, scaleX: 0.9, duration: 80, yoyo: true });
+        }});
+
+        // Partiklar
+        const px = this.add.particles(plat.x, plat.y, 'leafPart16', {
+            speed: {min:40, max:100}, angle:{min:220, max:320}, lifespan:500, alpha:{start:1, end:0}, scale:{start:1, end:0.5}, quantity:6, emitting:false
+        });
+        px.explode(6); this.time.delayedCall(600, () => px.destroy());
     }
+    
     scoreText.setText('⭐ ' + score);
-    isRescued = false;
+    isRescued = false; isFalling = false;
     lastProgressTime = Date.now();
+    lastProgressY = p.y;
 }
 
 function collectStar(p, star) {
     playSound('collect');
-    score++;
-    scoreText.setText('⭐ ' + score);
+    score++; scoreText.setText('⭐ ' + score);
     star.destroy();
 }
 
+// ===================== UPDATE LOOP =====================
 function update(time, delta) {
-    if(!isStarted) return;
-
+    if (!isStarted) return;
     const H = this.scale.height;
 
-    // Rörelse
+    // Rörelse Kontroller
     const speed = 400;
-    if (cursors.left.isDown || touchLeft) {
-        player.setVelocityX(-speed);
-        player.setFlipX(true);
-    } else if (cursors.right.isDown || touchRight) {
-        player.setVelocityX(speed);
-        player.setFlipX(false);
-    } else {
-        // Kör automatiskt sakta framåt? Nej, låt spelaren styra tempot. Eller endless runner auto?
-        // "Scrollar oändligt i sidled" -- vi ger konstant fart framåt!
-        player.setVelocityX(250);
-        player.setFlipX(false);
+    if (cursors.left.isDown || touchLeft)     { player.setVelocityX(-speed); player.setFlipX(true); }
+    else if (cursors.right.isDown || touchRight){ player.setVelocityX(speed); player.setFlipX(false); }
+    else                                      { player.setVelocityX(player.body.velocity.x * 0.85); }
+
+    // Roterar på väg upp
+    if (player.body.velocity.y < 0) player.setAngle(0);
+
+    // Mät djup/höjd ("Höjd" räknas neråt i Y)
+    // Oändlig i X och Y!
+    if (player.y < highestY) {
+        highestY = player.y;
+        distText.setText('🌿 ' + Math.floor(-highestY / 50) + 'm');
     }
 
-    // Wrap om man faller ur (Räddning i botten)
-    if (player.y > H + 100 && !isRescued) {
+    // Parallax update (stjärnor/fält) baserad på scroll
+    bgLayers.forEach(layer => {
+        layer.sprite.tilePositionX = this.cameras.main.scrollX * layer.speed;
+        layer.sprite.tilePositionY = this.cameras.main.scrollY * layer.speed;
+    });
+
+    // Svingande lianer i aktuell range
+    platforms.getChildren().forEach(p => {
+        if (p.getData('type') === 'vine') {
+            p.x = p.getData('startX') + Math.sin(time*0.0015 + p.getData('swingPhase')) * 50;
+            p.refreshBody();
+        }
+    });
+
+    // GENERERA RUNT SPELAREN
+    // Räkna ut spelarens chunkkoordinat
+    let currentChunkX = Math.floor(player.x / CHUNK_SIZE);
+    let currentChunkY = Math.floor(player.y / CHUNK_SIZE);
+
+    // Generera 3x3 rutnät runt spelaren
+    for(let dx = -1; dx <= 1; dx++) {
+        for(let dy = -2; dy <= 2; dy++) {
+            generateChunk(this, currentChunkX + dx, currentChunkY + dy);
+        }
+    }
+
+    // TA BORT LÅNGT BORTA 
+    // Optimization: Tar bort chukar som är för långt bort (~3 chunks bort)
+    const cleanupDist = CHUNK_SIZE * 3;
+    platforms.getChildren().forEach(p => {
+        if (Math.abs(p.x - player.x) > cleanupDist || Math.abs(p.y - player.y) > cleanupDist * 1.5) {
+            // Observera: Vi tar bort spriten från minnet. 
+            // Om de vandrar tillbaka måste vi regenerera chunk?
+            // Denna enkla infinite genererar EN gång per chunk ID. Går man långt tillbaka försvinner de permanent om man inte cleara chunk-id.
+            // Istället för destroy, låt Phaser hantera dem eller radera old chunks ID så de kan regeneras.
+            // För simplicity & oändlig exploration, radera ids som är extremt långt bort:
+            let cx = Math.floor(p.x/CHUNK_SIZE), cy = Math.floor(p.y/CHUNK_SIZE);
+            if(Math.abs(cx - currentChunkX) > 3 || Math.abs(cy - currentChunkY) > 4) {
+               delete chunks[`${cx},${cy}`];
+               p.destroy();
+            }
+        }
+    });
+
+    // RÄDDNINGSMOLN (OM MAN FALLER FÖR LÅNGT NER I BILD OCH INTE FÅR FÄSTE)
+    // Eftersom vi nu kan röra oss neråt frivilligt (dvs utforska nedåt), 
+    // triggar vi bara molnet om velocity är extremt hög nerråt under lång tid ELLER farten ökar.
+    // Men det är bättre att trigga molnet om man faller "snabbt och långt" utan kontroll, dvs max terminal velocity en stund:
+    if (player.body.velocity.y > 1000 && !isRescued) { // Faller stensnabbt = safety net!
         rescuePlayer(this);
     }
 
-    // Fixa parallax baserat på kamera
-    bgLayers.forEach(layer => {
-        layer.sprite.tilePositionX = this.cameras.main.scrollX * layer.speed;
-    });
-
-    // Score distans
-    const d = Math.max(0, Math.floor(player.x / 100));
-    if (d > distance) {
-        distance = d;
-        distText.setText('🚩 ' + distance + 'm');
+    // APA (stuck helper)
+    if (player.y < lastProgressY - 50 || Math.abs(player.x - lastProgressX) > 100) {
+        lastProgressY = player.y; lastProgressX = player.x; lastProgressTime = Date.now();
     }
-
-    // Generera i framkanten
-    if (this.cameras.main.scrollX + this.scale.width + 1000 > lastPlatformX) {
-        generatePlatform(this);
-    }
-
-    // Ta bort plattformar långt bak
-    const leftEdge = this.cameras.main.scrollX - 500;
-    platforms.getChildren().forEach(p => { if(p.x < leftEdge) p.destroy(); });
-    starsGroup.getChildren().forEach(s => { if(s.x < leftEdge) s.destroy(); });
-
-    // Apa check
-    if (player.x > lastProgressX + 50) {
-        lastProgressX = player.x; lastProgressTime = Date.now();
-    }
-    if (!monkeyActive && !isRescued && Date.now() - lastProgressTime > 15000) {
-        // Fastnat (ramlat ner eller misslyckats framåt)
+    if (isStarted && !monkeyActive && !isRescued && Date.now() - lastProgressTime > 20000) {
         monkeyRescue(this);
     }
 }
 
+// ===================== RÄDDNING & APA =====================
 function rescuePlayer(scene) {
     isRescued = true;
     playSound('rescue');
     scene.cameras.main.shake(100, 0.02);
     
-    // Slunga uppåt & framåt
-    player.setVelocityY(-900);
-    player.setVelocityX(400);
+    // Moln flyger upp i bild och landar vid spelaren
+    safetyCloud.setPosition(player.x, player.y + 100);
+    safetyCloud.setVisible(true);
+    
+    scene.tweens.add({
+        targets: safetyCloud,
+        y: player.y - 300,
+        duration: 800,
+        ease: 'Sine.easeOut',
+        onUpdate: () => { player.setPosition(safetyCloud.x, safetyCloud.y - 40); player.setVelocity(0,0); },
+        onComplete: () => {
+            player.setVelocityY(-900); playSound('superBounce');
+            safetyCloud.setVisible(false);
+            isRescued = false;
+        }
+    });
 }
 
 function monkeyRescue(scene) {
     monkeyActive = true;
     playSound('collect');
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        let u = new SpeechSynthesisUtterance('Här kommer apan!'); u.lang='sv-SE'; window.speechSynthesis.speak(u);
+    }
     
-    const m = scene.add.sprite(player.x - 100, player.y - 100, 'monkey8').setDepth(30);
+    const m = scene.add.sprite(player.x + 200, player.y - 100, 'monkey16').setDepth(30).setScale(1.2);
     scene.tweens.add({
-        targets: m, x: player.x, y: player.y, duration: 500, ease: 'Sine.easeOut',
+        targets: m, x: player.x, y: player.y-10, duration: 600, ease: 'Back.easeOut',
         onComplete: () => {
             scene.tweens.add({
-                targets: m, x: player.x + 500, y: player.y - 300, duration: 1500, ease: 'Sine.easeInOut',
-                onUpdate: () => { player.setPosition(m.x, m.y + 20); player.setVelocity(0,0); },
+                targets: m, y: player.y - 600, x: player.x + (Math.random()-0.5)*300, duration: 1500, ease: 'Sine.easeInOut',
+                onUpdate: () => { player.setPosition(m.x, m.y+20); player.setVelocity(0,0); },
                 onComplete: () => {
-                    player.setVelocityY(-500); player.setVelocityX(200); playSound('jump');
+                    player.setVelocityY(-600); playSound('jump');
                     scene.tweens.add({ targets: m, alpha: 0, duration: 500, onComplete: () => m.destroy() });
-                    lastProgressTime = Date.now(); lastProgressX = player.x; monkeyActive = false;
+                    lastProgressTime = Date.now(); monkeyActive = false;
                 }
             });
         }
     });
 }
 
-// ===================== TILLBAKA-KNAPP & HJÄLP =====================
+// ===================== TILLBAKA & HJÄLP =====================
 document.getElementById('back-btn').addEventListener('click', (e) => {
     e.preventDefault();
-    if (window.parent !== window) {
-        window.parent.postMessage('goBack', '*');
-    } else {
-        window.location.href = '../index.html';
-    }
+    if (window.parent !== window) window.parent.postMessage('goBack', '*');
+    else window.location.href = '../index.html';
 });
 
 document.getElementById('help-btn').addEventListener('click', (e) => {
     e.preventDefault();
-    const helpMsg = 'Grod-apan springer framåt!\\nSpelaren studsar hela tiden.\\n\\n[←] tryck vänster skärm\\n[→] tryck höger skärm\\n\\nHoppa på lianer och blad, undvik fall!';
+    const h = 'Utforska djungeln obegränsat åt alla håll!\n[←][→] eller peka för att styra.\nHoppa högre på lianer & frukter.';
     if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel();
-        let u = new SpeechSynthesisUtterance(helpMsg); u.lang = 'sv-SE'; u.rate = 1.0;
-        window.speechSynthesis.speak(u);
-    } else {
-        alert(helpMsg);
-    }
+        let u = new SpeechSynthesisUtterance(h); u.lang = 'sv-SE'; window.speechSynthesis.speak(u);
+    } else alert(h);
 });
