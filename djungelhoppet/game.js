@@ -202,10 +202,18 @@ function create() {
     starsGroup = this.physics.add.group({ allowGravity: false });
 
     // Spelare
-    player = this.physics.add.sprite(W/2, 350, 'player16');
+    player = this.physics.add.sprite(W/2, 100, 'player16');
     player.setBounce(0).setDepth(10);
     player.body.setSize(38, 38).setOffset(5, 5);
 
+    // Då spelet genererar chunkar baserat på var man är, generera startområdet!
+    let startCx = Math.floor(player.x / CHUNK_SIZE);
+    let startCy = Math.floor(player.y / CHUNK_SIZE);
+    for(let dx=-2; dx<=2; dx++) {
+        for(let dy=-1; dy<=1; dy++) {
+            generateChunk(this, startCx + dx, startCy + dy);
+        }
+    }
     this.physics.add.collider(player, platforms, onPlatformLand, null, this);
     this.physics.add.overlap(player, fruitsGroup, collectFruit, null, this);
     this.physics.add.overlap(player, starsGroup, collectStar, null, this);
@@ -263,20 +271,20 @@ function generateChunk(scene, cx, cy) {
 
     // MARKNIVÅ (Inga hål, solid mark)
     if (cy >= 0) {
-        let ground = platforms.create(startX + CHUNK_SIZE/2, 400, 'pixel');
-        ground.setScale(CHUNK_SIZE/8 + 1, 10).refreshBody();
+        let ground = platforms.create(startX + CHUNK_SIZE/2, 450, 'pixel');
+        ground.setScale(CHUNK_SIZE/8 + 1, 30).refreshBody();
         ground.setTint(0x27ae60);
         ground.setData('type', 'ground');
         
         // Dekorativa träd
         for(let j=0; j<4; j++) {
             let tx = startX + Math.random() * CHUNK_SIZE;
-            scene.add.sprite(tx, 380, 'branch16').setDepth(5).setScale(0.6).setAngle(90).setTint(0x27ae60);
+            scene.add.sprite(tx, 310, 'branch16').setDepth(5).setScale(0.8).setAngle(90).setTint(0x27ae60);
         }
 
         // Se till att det finns en "trappa" uppåt om vi är direkt ovan marken
         if (cy === 0) {
-            let p1 = platforms.create(startX + CHUNK_SIZE * 0.3, 220, 'leaf16');
+            let p1 = platforms.create(startX + CHUNK_SIZE * 0.3, 200, 'leaf16');
             p1.setData('type', 'leaf'); p1.refreshBody();
             
             let p2 = platforms.create(startX + CHUNK_SIZE * 0.7, 50, 'branch16');
