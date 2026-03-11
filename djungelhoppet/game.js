@@ -61,7 +61,7 @@ const game = new Phaser.Game(config);
 let player, platforms, fruitsGroup, cursors, score = 0, highestY = 0, starsGroup, startText;
 let scoreText, distText, isStarted = false, isFalling = false, isRescued = false;
 let touchLeft = false, touchRight = false;
-let bgLayers = [], guideParticles, safetyCloud;
+let bgLayers = [], guideParticles, safetyCloud, bgEntitiesGroup;
 let monkeyActive = false, lastProgressTime = 0, lastProgressY = 0, lastProgressX = 0;
 let chunks = {}; // Håller reda på genererade chunks (både X och Y)
 const CHUNK_SIZE = 600;
@@ -183,6 +183,47 @@ function generateTextures(scene) {
     
     // Pixel för BG
     const pxGfx = scene.make.graphics(); pxGfx.fillStyle(0xffffff,1); pxGfx.fillRect(0,0,8,8); pxGfx.generateTexture('pixel', 8, 8); pxGfx.destroy();
+
+    // Mark
+    const grGfx = scene.make.graphics();
+    grGfx.fillStyle(0x27ae60, 1); grGfx.fillRect(0, 0, 800, 100);
+    grGfx.fillStyle(0x2ecc71, 1); grGfx.fillRect(0, 0, 800, 20); // Övre ljusare rand
+    grGfx.generateTexture('ground16', 800, 100); grGfx.destroy();
+
+    // === Bakgrundsdekorationer ===
+    // Fågel
+    const biGfx = scene.make.graphics();
+    biGfx.fillStyle(0x000000, 1); biGfx.fillTriangle(0, 5, 10, 0, 20, 5); biGfx.fillTriangle(10, 0, 10, 10, 15, 5);
+    biGfx.generateTexture('bird16', 20, 10); biGfx.destroy();
+    
+    // Flygplan
+    const plGfx = scene.make.graphics();
+    plGfx.fillStyle(0xecf0f1, 1); plGfx.fillEllipse(30, 15, 30, 10); // Kropp
+    plGfx.fillStyle(0xbdc3c7, 1); plGfx.fillEllipse(30, 20, 10, 25); // Vingar
+    plGfx.fillStyle(0xe74c3c, 1); plGfx.fillEllipse(5, 15, 5, 12); // Stjärt
+    plGfx.generateTexture('plane16', 60, 40); plGfx.destroy();
+    
+    // Luftballong
+    const balGfx = scene.make.graphics();
+    balGfx.fillStyle(0xe74c3c, 1); balGfx.fillCircle(20, 20, 20);
+    balGfx.fillStyle(0xf1c40f, 1); balGfx.fillRect(15, 20, 10, 20);
+    balGfx.fillStyle(0x8e44ad, 1); balGfx.fillRect(15, 40, 10, 10); // Korg
+    balGfx.generateTexture('balloon16', 40, 50); balGfx.destroy();
+
+    // Satellit
+    const satGfx = scene.make.graphics();
+    satGfx.fillStyle(0x95a5a6, 1); satGfx.fillRect(15, 15, 20, 20); // Kropp
+    satGfx.fillStyle(0x3498db, 1); satGfx.fillRect(0, 20, 15, 10); satGfx.fillRect(35, 20, 15, 10); // Paneler
+    satGfx.fillStyle(0xe74c3c, 1); satGfx.fillCircle(25, 15, 3); // Antenn-ljus
+    satGfx.generateTexture('satellite16', 50, 50); satGfx.destroy();
+
+    // Raket
+    const rGfx = scene.make.graphics();
+    rGfx.fillStyle(0xbdc3c7, 1); rGfx.fillEllipse(20, 25, 10, 25);
+    rGfx.fillStyle(0xe74c3c, 1); rGfx.fillTriangle(20, 0, 10, 15, 30, 15); // Nos
+    rGfx.fillStyle(0xe74c3c, 1); rGfx.fillTriangle(10, 40, 5, 50, 15, 45); rGfx.fillTriangle(30, 40, 35, 50, 25, 45); // Fenor
+    rGfx.fillStyle(0xf1c40f, 1); rGfx.fillCircle(20, 50, 6); // Eld
+    rGfx.generateTexture('rocket16', 40, 60); rGfx.destroy();
 }
 
 function create() {
@@ -200,6 +241,15 @@ function create() {
     platforms = this.physics.add.staticGroup();
     fruitsGroup = this.physics.add.staticGroup();
     starsGroup = this.physics.add.group({ allowGravity: false });
+    bgEntitiesGroup = this.add.group();
+
+    // Moln i bakgrunden för parallax
+    for(let i=0; i<30; i++) {
+        let cx = Math.random() * W * 4 - W * 2;
+        let cy = -Math.random() * 5000;
+        let c = this.add.sprite(cx, cy, 'cloud16');
+        c.setScrollFactor(0.2 + Math.random() * 0.3).setAlpha(0.5).setDepth(-5).setScale(0.5 + Math.random());
+    }
 
     // Spelare
     player = this.physics.add.sprite(W/2, 100, 'player16');
@@ -271,17 +321,10 @@ function generateChunk(scene, cx, cy) {
 
     // MARKNIVÅ (Inga hål, solid mark)
     if (cy >= 0) {
-        let ground = platforms.create(startX + CHUNK_SIZE/2, 450, 'pixel');
-        ground.setScale(CHUNK_SIZE/8 + 1, 30).refreshBody();
-        ground.setTint(0x27ae60);
+        let ground = platforms.create(startX + CHUNK_SIZE/2, 450, 'ground16');
+        ground.setScale(2).refreshBody();
         ground.setData('type', 'ground');
         
-        // Dekorativa träd
-        for(let j=0; j<4; j++) {
-            let tx = startX + Math.random() * CHUNK_SIZE;
-            scene.add.sprite(tx, 310, 'branch16').setDepth(5).setScale(0.8).setAngle(90).setTint(0x27ae60);
-        }
-
         // Se till att det finns en "trappa" uppåt om vi är direkt ovan marken
         if (cy === 0) {
             let p1 = platforms.create(startX + CHUNK_SIZE * 0.3, 200, 'leaf16');
@@ -294,11 +337,11 @@ function generateChunk(scene, cx, cy) {
         return; // Avbryt vanliga plattformar här nere
     }
     
-    // RYMD OCH SOL (Vinstnivå)
-    if (cy <= -33) {
+    // RYMD OCH SOL (Vinstnivå minskad till ca 1/3)
+    if (cy <= -11) {
         if (!scene.sunCreated && Math.abs(cx - Math.floor(player.x/CHUNK_SIZE)) <= 1) {
             scene.sunCreated = true;
-            let sun = fruitsGroup.create(player.x, -20000, 'fruit16');
+            let sun = fruitsGroup.create(player.x, -7000, 'fruit16');
             sun.setData('type', 'sun');
             sun.setScale(15).refreshBody();
             sun.setTint(0xffeb3b);
@@ -674,19 +717,20 @@ function monkeyRescue(scene) {
 
 function updateBackgroundAndEnv(scene, y) {
     let color;
+    // Nya intervaller baserat på 1/3 avstånd till solen
     if (y > 0) color = Phaser.Display.Color.HexStringToColor('#5dade2'); // Ljusblå
-    else if (y > -5000) {
-        let f = Math.max(0, -y / 5000);
+    else if (y > -1500) {
+        let f = Math.max(0, -y / 1500);
         color = Phaser.Display.Color.Interpolate.ColorWithColor(
             Phaser.Display.Color.HexStringToColor('#5dade2'),
             Phaser.Display.Color.HexStringToColor('#2980b9'), 1, f);
-    } else if (y > -10000) {
-        let f = Math.max(0, -(y + 5000) / 5000);
+    } else if (y > -3500) {
+        let f = Math.max(0, -(y + 1500) / 2000);
         color = Phaser.Display.Color.Interpolate.ColorWithColor(
             Phaser.Display.Color.HexStringToColor('#2980b9'),
             Phaser.Display.Color.HexStringToColor('#154360'), 1, f);
-    } else if (y > -15000) {
-        let f = Math.max(0, -(y + 10000) / 5000);
+    } else if (y > -5000) {
+        let f = Math.max(0, -(y + 3500) / 1500);
         color = Phaser.Display.Color.Interpolate.ColorWithColor(
             Phaser.Display.Color.HexStringToColor('#154360'),
             Phaser.Display.Color.HexStringToColor('#000000'), 1, f);
@@ -697,8 +741,8 @@ function updateBackgroundAndEnv(scene, y) {
     let colObj = (typeof color === 'object') ? color : Phaser.Display.Color.IntegerToColor(color);
     scene.cameras.main.setBackgroundColor(colObj);
     
-    // Rymd-stjärnor
-    if (y < -12000) {
+    // Rymd-stjärnor tidigare
+    if (y < -4000) {
         if (!scene.spaceStars) {
             scene.spaceStars = scene.add.particles(0, 0, 'pixel', {
                 x: { min: -1000, max: 1000 },
@@ -718,8 +762,39 @@ function updateBackgroundAndEnv(scene, y) {
     }
     
     // Tona ut skogen ju högre upp man kommer
-    let depthFactor = Math.max(0, Math.min(1, (y + 5000) / 5000)); 
+    let depthFactor = Math.max(0, Math.min(1, (y + 2000) / 2000)); 
     bgLayers.forEach(layer => layer.sprite.setAlpha(0.5 * depthFactor));
+
+    // Slumpmässiga bakgrundselement (Fåglar, flygplan, satelliter)
+    if (isStarted && Math.random() < 0.015) {
+        let isSpace = y < -4000;
+        let type;
+        if (isSpace) {
+            type = Math.random() < 0.5 ? 'satellite16' : 'rocket16';
+        } else {
+            let r = Math.random();
+            if (r < 0.4) type = 'bird16';
+            else if (r < 0.7) type = 'plane16';
+            else type = 'balloon16';
+        }
+        
+        let dir = Math.random() < 0.5 ? 1 : -1;
+        let pY = y + (Math.random() - 0.5) * 800;
+        
+        let entity = bgEntitiesGroup.create(player.x - dir * 1000, pY, type);
+        entity.setScrollFactor(0.2).setDepth(-3).setAlpha(0.8);
+        if (dir === -1 && type !== 'balloon16') entity.setFlipX(true);
+        if (type === 'rocket16') entity.setAngle(dir === 1 ? 45 : -45);
+        if (type === 'satellite16') scene.tweens.add({ targets: entity, angle: 360, duration: 15000, repeat: -1 });
+        
+        scene.tweens.add({
+            targets: entity,
+            x: player.x + dir * 1500,
+            y: type === 'rocket16' ? pY - 800 : pY, // Raketer flyger även snett uppåt
+            duration: 9000 + Math.random() * 5000,
+            onComplete: () => { if (entity) entity.destroy(); }
+        });
+    }
 }
 
 // ===================== TILLBAKA & HJÄLP =====================
