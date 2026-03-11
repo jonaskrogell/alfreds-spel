@@ -354,8 +354,15 @@ function generateChunk(scene, cx, cy) {
     if (cy <= -11) {
         if (!scene.sunCreated && Math.abs(cx - Math.floor(player.x/CHUNK_SIZE)) <= 1) {
             scene.sunCreated = true;
-            // Placeras mycket närmare de sista plattformarna så det är ett lättare mål
-            let sun = fruitsGroup.create(player.x, -6300, 'sun16');
+            leX = player.x;
+            leY = cy * CHUNK_SIZE + 400; // Ungefär vid -6200
+            
+            // En garanterad slutplattform under solen
+            let pFinal = platforms.create(leX, leY + 200, 'leaf16');
+            pFinal.setData('type', 'leaf'); pFinal.refreshBody();
+
+            // Placeras direkt ovanför slutplattformen
+            let sun = fruitsGroup.create(leX, leY - 100, 'sun16');
             sun.setData('type', 'sun');
             sun.setScale(1.2).refreshBody();
             scene.tweens.add({ targets: sun, scaleX: 1.4, scaleY: 1.4, yoyo: true, repeat: -1, duration: 1500 });
@@ -412,35 +419,35 @@ function generateChunk(scene, cx, cy) {
             plat.setData('type', 'bouncepad');
             // Placera högre depth så den syns tydligt ifall det skulle klippa med lianer
             plat.setDepth(15);
-        } else if (rand < 0.45) {
+        } else if (rand < 0.40) {
             plat = platforms.create(px, py, 'leaf16');
             plat.setData('type', 'leaf');
-        } else if (rand < 0.70) {
+        } else if (rand < 0.55) {
             plat = platforms.create(px, py, 'branch16');
             plat.setData('type', 'branch');
-        } else if (rand < 0.85) {
+        } else if (rand < 0.70) {
             plat = platforms.create(px, py, 'vine16');
             plat.setData('type', 'vine');
             plat.setData('startX', px);
             plat.setData('swingSpeed', 1.0 + Math.random());
             plat.setData('swingPhase', Math.random() * Math.PI*2);
         } else {
-            // Frukter - 30% chans totalt per plattform
+            // Frukter - 30% chans totalt per plattform!
             const fRand = Math.random();
-            if (fRand < 0.25) {
+            if (fRand < 0.20) {
                 plat = fruitsGroup.create(px, py, 'fruit16');
                 plat.setData('type', 'fruit');
-            } else if (fRand < 0.45) {
+            } else if (fRand < 0.40) {
                 plat = fruitsGroup.create(px, py, 'chili16');
                 plat.setData('type', 'chili');
-            } else if (fRand < 0.65) {
+            } else if (fRand < 0.60) {
                 plat = fruitsGroup.create(px, py, 'melon16');
                 plat.setData('type', 'melon');
-            } else if (fRand < 0.85) {
+            } else if (fRand < 0.80) {
                 plat = fruitsGroup.create(px, py, 'blueberry16');
                 plat.setData('type', 'blueberry');
             } else {
-                plat = fruitsGroup.create(px, py, 'banana16');
+                plat = fruitsGroup.create(px, py, 'banana16'); // 20% chans för banan av alla frukter
                 plat.setData('type', 'banana');
             }
             scene.tweens.add({ targets: plat, y: py - 7, yoyo: true, repeat: -1, duration: 1000 + Math.random()*500 });
