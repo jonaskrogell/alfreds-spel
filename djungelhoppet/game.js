@@ -147,8 +147,10 @@ function generateTextures(scene) {
 
     // Bouncepad (Studsande svamp / trumma)
     const bpGfx = scene.make.graphics();
-    bpGfx.fillStyle(0x8e44ad, 1); bpGfx.fillArc(50, 25, 45, Math.PI, Math.PI*2, false); // Svamphatt
-    bpGfx.fillStyle(0x9b59b6, 1); bpGfx.fillArc(50, 23, 40, Math.PI, Math.PI*2, false);
+    bpGfx.fillStyle(0x8e44ad, 1); 
+    bpGfx.beginPath(); bpGfx.arc(50, 25, 45, Math.PI, Math.PI*2, false); bpGfx.fillPath(); // Svamphatt
+    bpGfx.fillStyle(0x9b59b6, 1); 
+    bpGfx.beginPath(); bpGfx.arc(50, 23, 40, Math.PI, Math.PI*2, false); bpGfx.fillPath();
     bpGfx.fillStyle(0xf1c40f, 1); bpGfx.fillCircle(30, 10, 8); bpGfx.fillCircle(70, 12, 6); bpGfx.fillCircle(50, 5, 5); // Prickar
     bpGfx.fillStyle(0xe67e22, 1); bpGfx.fillRoundedRect(40, 25, 20, 15, 4); // Stam
     bpGfx.generateTexture('bouncepad16', 100, 40); bpGfx.destroy();
