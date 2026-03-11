@@ -292,6 +292,7 @@ function generateChunk(scene, cx, cy) {
     
     // Vi lägger in plattformar sporadiskt i denna region
     // Låt oss säga ca 3-5 plattformar per chunk för bra balans
+    const numPlatforms = 3 + Math.floor(Math.random() * 3);
     for(let i=0; i<numPlatforms; i++) {
         // Ska denna plattform bli en ovanlig studsmatta? (Ca 1 på 20)
         let isBouncepad = Math.random() < 0.05;
