@@ -44,6 +44,15 @@ A vertical platform-jumping game with a 16-bit aesthetic where you bounce higher
 *   **Goal:** Reach the sun at the top to win. Collect fruits to grow bigger and find invincibility stars. Beware of falling!
 *   **Tech Stack:** Vanilla JavaScript and HTML5 Canvas (2D) with infinite level generation and layered backgrounds.
 
+### 5. Super Rally (Super Rally) 🚗
+A top-down procedurally generated racing game where cars auto-accelerate and players simply steer through chicanes and AI traffic.
+
+![Super Rally](screenshot_rally.webp)
+
+*   **Controls:** Touch the left/right buttons on screen or use the `Left`/`Right` (`A`/`D`) keys to steer.
+*   **Goal:** Complete laps around the procedurally generated circuit! Stay on the wide track so you don't lose speed, and bounce off the tires and 8 other diverse AI racers.
+*   **Tech Stack:** Vanilla JavaScript and HTML5 Canvas (2D) utilizing Catmull-Rom splines for random track generation.
+
 ## How to Run
 
 Since these games use local assets (such as sound effects generated via Web Audio API or textures), they need to be served from a local web server to prevent cross-origin issues in modern web browsers.

@@ -1,0 +1,105 @@
+body {
+    margin: 0;
+    overflow: hidden;
+    background-color: #61b849; /* Nice grass green */
+    font-family: 'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', cursive, sans-serif;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none; /* Prevent zooming/scrolling on mobile */
+}
+
+#gameCanvas {
+    display: block;
+    width: 100vw;
+    height: 100vh;
+}
+
+#back-btn {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    background: #ff4757;
+    color: white;
+    border: 4px solid #fff;
+    border-radius: 15px;
+    padding: 10px 20px;
+    font-size: 20px;
+    font-family: inherit;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    z-index: 10;
+}
+
+#back-btn:active {
+    transform: scale(0.95);
+}
+
+#ui {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 4px solid #feca57;
+    border-radius: 15px;
+    padding: 10px 20px;
+    font-size: 24px;
+    font-weight: bold;
+    color: #ff9f43;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    z-index: 10;
+}
+
+#joypad {
+    position: absolute;
+    bottom: 40px;
+    left: 0;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    padding: 0 40px;
+    box-sizing: border-box;
+    z-index: 10;
+    pointer-events: none;
+}
+
+.control-btn {
+    pointer-events: auto;
+    width: 120px;
+    height: 120px;
+    background: rgba(255, 255, 255, 0.85);
+    border: 6px solid #48dbfb;
+    border-radius: 50%;
+    font-size: 50px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 8px 15px rgba(0,0,0,0.4);
+    cursor: pointer;
+    transition: transform 0.1s;
+}
+
+.control-btn:active, .control-btn.active {
+    background: #48dbfb;
+    color: white;
+    transform: scale(0.9) translateY(4px);
+    box-shadow: 0 4px 5px rgba(0,0,0,0.4);
+}
+
+#celebration {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0);
+    font-size: 60px;
+    font-weight: bold;
+    color: #ffdd59;
+    text-shadow: 4px 4px 0 #ff3f34, 0 0 20px rgba(0,0,0,0.5);
+    z-index: 20;
+    pointer-events: none;
+    transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+#celebration.show {
+    transform: translate(-50%, -50%) scale(1);
+}
