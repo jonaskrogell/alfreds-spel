@@ -350,23 +350,17 @@ function generateChunk(scene, cx, cy) {
         return; // Avbryt vanliga plattformar här nere
     }
     
-    // RYMD OCH SOL (Vinstnivå minskad till ca 1/3)
-    if (cy <= -11) {
+    // RYMD OCH SOL (Vinstnivå)
+    if (cy <= -12) {
         if (!scene.sunCreated && Math.abs(cx - Math.floor(player.x/CHUNK_SIZE)) <= 1) {
             scene.sunCreated = true;
-            let leX = player.x;
-            let leY = cy * CHUNK_SIZE + 400; // Ungefär vid -6200
-            
-            // En garanterad slutplattform under solen
-            let pFinal = platforms.create(leX, leY + 200, 'leaf16');
-            pFinal.setData('type', 'leaf'); pFinal.refreshBody();
-            scene.finalPlat = pFinal;
+            let leY = cy * CHUNK_SIZE + 400; // -7200 + 400 = -6800
 
-            // Placeras direkt ovanför slutplattformen
-            let sun = fruitsGroup.create(leX, leY - 100, 'sun16');
+            // Placeras precis ovanför sista vanliga molnen!
+            let sun = fruitsGroup.create(player.x, leY, 'sun16');
             sun.setData('type', 'sun');
-            sun.setScale(1.2).refreshBody();
-            scene.tweens.add({ targets: sun, scaleX: 1.4, scaleY: 1.4, yoyo: true, repeat: -1, duration: 1500 });
+            sun.setScale(1.3).refreshBody();
+            scene.tweens.add({ targets: sun, scaleX: 1.5, scaleY: 1.5, yoyo: true, repeat: -1, duration: 1500 });
             scene.tweens.add({ targets: sun, angle: 360, repeat: -1, duration: 15000 });
             scene.theSun = sun;
         }
@@ -632,10 +626,10 @@ function update(time, delta) {
     // Updatera miljö och färg beroende på hur högt (y) man kommit
     updateBackgroundAndEnv(this, player.y);
     
-    // Se till att solen (om skapad) alltid svävar precis över dig i horisontell led
-    if (this.theSun && this.finalPlat) {
-        this.theSun.x = player.x; this.theSun.refreshBody();
-        this.finalPlat.x = player.x; this.finalPlat.refreshBody();
+    // Se till att solen (om skapad) alltid svävar precis över dig i horisontell led, glider mjukt dit!
+    if (this.theSun) {
+        this.theSun.x += (player.x - this.theSun.x) * 0.05;
+        this.theSun.refreshBody();
     }
 
     // Rörelse Kontroller
