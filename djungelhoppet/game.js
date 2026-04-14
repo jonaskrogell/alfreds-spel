@@ -354,12 +354,13 @@ function generateChunk(scene, cx, cy) {
     if (cy <= -11) {
         if (!scene.sunCreated && Math.abs(cx - Math.floor(player.x/CHUNK_SIZE)) <= 1) {
             scene.sunCreated = true;
-            leX = player.x;
-            leY = cy * CHUNK_SIZE + 400; // Ungefär vid -6200
+            let leX = player.x;
+            let leY = cy * CHUNK_SIZE + 400; // Ungefär vid -6200
             
             // En garanterad slutplattform under solen
             let pFinal = platforms.create(leX, leY + 200, 'leaf16');
             pFinal.setData('type', 'leaf'); pFinal.refreshBody();
+            scene.finalPlat = pFinal;
 
             // Placeras direkt ovanför slutplattformen
             let sun = fruitsGroup.create(leX, leY - 100, 'sun16');
@@ -367,6 +368,7 @@ function generateChunk(scene, cx, cy) {
             sun.setScale(1.2).refreshBody();
             scene.tweens.add({ targets: sun, scaleX: 1.4, scaleY: 1.4, yoyo: true, repeat: -1, duration: 1500 });
             scene.tweens.add({ targets: sun, angle: 360, repeat: -1, duration: 15000 });
+            scene.theSun = sun;
         }
         return; // Inga plattformar över solen
     }
@@ -629,6 +631,12 @@ function update(time, delta) {
 
     // Updatera miljö och färg beroende på hur högt (y) man kommit
     updateBackgroundAndEnv(this, player.y);
+    
+    // Se till att solen (om skapad) alltid svävar precis över dig i horisontell led
+    if (this.theSun && this.finalPlat) {
+        this.theSun.x = player.x; this.theSun.refreshBody();
+        this.finalPlat.x = player.x; this.finalPlat.refreshBody();
+    }
 
     // Rörelse Kontroller
     const speed = 400;
