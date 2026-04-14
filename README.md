@@ -11,7 +11,7 @@ Welcome to a collection of simple, fun, and child-safe web games designed specif
 ### 1. Hungry Pigs (Hungriga Grisar) 🐷
 A Flappy Bird-style game where you control a flying pig dodging pipes/trees to catch food.
 
-![Hungriga Grisar](screenshot_grisar.png)
+![Hungriga Grisar](screenshot_grisar.webp)
 
 *   **Controls:** Tap anywhere on the screen or press `Space` to jump. Double-tap to duck/dive quickly.
 *   **Goal:** Stay in the air as long as possible without hitting obstacles or the ground. 
@@ -20,7 +20,7 @@ A Flappy Bird-style game where you control a flying pig dodging pipes/trees to c
 ### 2. Crazy Cars (Galna Bilar) 🏎️
 A pseudo-3D perspective racing game. Drive along a winding road, changing lanes to avoid obstacles and collect stars.
 
-![Galna Bilar](screenshot_bilar.png)
+![Galna Bilar](screenshot_bilar.webp)
 
 *   **Controls:** Tap the left, middle, or right side of the screen to change lanes. You can also use `A`/`D` or the `Arrow` keys. Press `Space` to honk!
 *   **Goal:** Collect 100 golden stars to win. Avoid red concrete blocks (they stop the car) and other AI-controlled cars (they will slow you down or you can bump them forward).
@@ -29,7 +29,7 @@ A pseudo-3D perspective racing game. Drive along a winding road, changing lanes 
 ### 3. The Dino Mystery (Dino Mysteriet) 🦖
 A hidden object game set in a vibrant jungle environment. Help the mother dinosaur find her lost eggs.
 
-![Dino Mysteriet](screenshot_dino.png)
+![Dino Mysteriet](screenshot_dino.webp)
 
 *   **Controls:** Tap on bushes, rocks, and caves to search them.
 *   **Goal:** Find all 5 hidden eggs. Sometimes you might find a cheeky monkey or a frog instead!
@@ -38,7 +38,7 @@ A hidden object game set in a vibrant jungle environment. Help the mother dinosa
 ### 4. Jungle Jump (Djungelhoppet) 🐸
 A vertical platform-jumping game with a 16-bit aesthetic where you bounce higher and higher to reach the sun!
 
-![Djungelhoppet](screenshot_djungel.png)
+![Djungelhoppet](screenshot_djungel.webp)
 
 *   **Controls:** Use `Left`/`Right` arrow keys or touch the sides of the screen to steer left and right. Bounce on leaves, clouds, and bouncepads to go higher!
 *   **Goal:** Reach the sun at the top to win. Collect fruits to grow bigger and find invincibility stars. Beware of falling!
