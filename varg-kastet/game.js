@@ -18,7 +18,12 @@ const images = {
     bg: null,
     wolf: null,
     dog: null,
-    bin: null
+    bin: null,
+    // Obstacle sprites
+    obs_helicopter: null,
+    obs_butterfly: null,
+    obs_duck: null,
+    obs_balloon: null,
 };
 
 // Physics and Positions
@@ -163,7 +168,7 @@ function makeTransparent(imageSrc, isBg, callback) {
 
 function initGame() {
     let loaded = 0;
-    const total = 4;
+    const total = 8;
     
     const checkLoad = () => {
         loaded++;
@@ -180,6 +185,10 @@ function initGame() {
     makeTransparent('assets/wolf.png', false, (img) => { images.wolf = img; checkLoad(); });
     makeTransparent('assets/dog.png', false, (img) => { images.dog = img; checkLoad(); });
     makeTransparent('assets/bin.png', false, (img) => { images.bin = img; checkLoad(); });
+    makeTransparent('assets/obs_helicopter.png', false, (img) => { images.obs_helicopter = img; checkLoad(); });
+    makeTransparent('assets/obs_butterfly.png', false, (img) => { images.obs_butterfly = img; checkLoad(); });
+    makeTransparent('assets/obs_duck.png', false, (img) => { images.obs_duck = img; checkLoad(); });
+    makeTransparent('assets/obs_balloon.png', false, (img) => { images.obs_balloon = img; checkLoad(); });
 }
 
 function resize() {
@@ -236,27 +245,48 @@ function randomizeLevel() {
         if (maxObstacles > 4) maxObstacles = 4;
         let numSpawns = Math.floor(Math.random() * maxObstacles) + 1;
         
-        // Extra storlekar och variationer
-        const emojis = ['🎈', '☁️', '🛸', '🪁', '🚁', '🐝', '👻'];
-        const fontSizes = [120, 140, 160, 180]; // Mycket större!
+        // Alla hinderstyper: img-sprite ELLER emoji fallback
+        const obstacleTypes = [
+            // Bildbaserade hinder
+            { img: 'obs_helicopter', emoji: null, motionStyle: 'horizontal', speedMod: 1.5 },
+            { img: 'obs_butterfly',  emoji: null, motionStyle: 'sine',       speedMod: 0.8 },
+            { img: 'obs_duck',       emoji: null, motionStyle: 'vertical',    speedMod: 1.0 },
+            { img: 'obs_balloon',    emoji: null, motionStyle: 'vertical',    speedMod: 0.6 },
+            // Emoji-hinder (roliga bonus-varianter)
+            { img: null, emoji: '🛸', motionStyle: 'horizontal', speedMod: 2.0 },
+            { img: null, emoji: '🚁', motionStyle: 'sine',       speedMod: 1.2 },
+            { img: null, emoji: '🐝', motionStyle: 'vertical',   speedMod: 1.8 },
+            { img: null, emoji: '👻', motionStyle: 'horizontal', speedMod: 1.0 },
+            { img: null, emoji: '☄️', motionStyle: 'horizontal', speedMod: 2.5 },
+            { img: null, emoji: '🦖', motionStyle: 'vertical',   speedMod: 0.9 },
+            { img: null, emoji: '🌈', motionStyle: 'sine',       speedMod: 0.5 },
+            { img: null, emoji: '🤱', motionStyle: 'vertical',   speedMod: 1.1 },
+        ];
 
         for (let i = 0; i < numSpawns; i++) {
-            let isHorizontal = Math.random() > 0.5;
-            let oSizeIndex = Math.floor(Math.random() * fontSizes.length);
-            let s = fontSizes[oSizeIndex];
-            
+            const type = obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)];
+            const spriteSize = 120 + Math.floor(Math.random() * 3) * 30;
+            const baseSpeed = (1.5 + Math.random() * 2) * type.speedMod;
+
+            let vx = 0, vy = 0;
+            let sinePhase = Math.random() * Math.PI * 2;
+            if (type.motionStyle === 'horizontal') { vx = (Math.random() > 0.5 ? 1 : -1) * baseSpeed; }
+            else if (type.motionStyle === 'vertical') { vy = (Math.random() > 0.5 ? 1 : -1) * baseSpeed; }
+            else if (type.motionStyle === 'sine') { vx = (Math.random() > 0.5 ? 1 : -1) * baseSpeed * 0.5; vy = 0; }
+
             obstacles.push({
                 x: W * 0.3 + Math.random() * (W * 0.3),
-                y: H * 0.2 + Math.random() * (H * 0.5),
-                radius: s * 0.45,
-                size: s,
-                vy: isHorizontal ? 0 : (Math.random() > 0.5 ? 1 : -1) * (2 + Math.random() * 3),
-                vx: isHorizontal ? (Math.random() > 0.5 ? 1 : -1) * (2 + Math.random() * 3) : 0,
-                emoji: emojis[Math.floor(Math.random() * emojis.length)],
-                minY: H * 0.1,
-                maxY: H * 0.8,
-                minX: W * 0.3,
-                maxX: W * 0.7
+                y: H * 0.15 + Math.random() * (H * 0.55),
+                radius: spriteSize * 0.4,
+                size: spriteSize,
+                vx, vy,
+                spriteImg: type.img,
+                emoji: type.emoji,
+                motionStyle: type.motionStyle,
+                sinePhase,
+                angle: 0,
+                minY: H * 0.08, maxY: H * 0.8,
+                minX: W * 0.2,  maxX: W * 0.8
             });
         }
     }
@@ -390,15 +420,23 @@ function update() {
     }
     
     obstacles.forEach(o => {
-        o.y += o.vy;
+        o.sinePhase = (o.sinePhase || 0) + 0.04;
+        if (o.motionStyle === 'sine') {
+            o.y = (o.minY + o.maxY) / 2 + Math.sin(o.sinePhase) * (o.maxY - o.minY) / 2;
+        } else {
+            o.y += o.vy;
+            if (o.y < o.minY || o.y > o.maxY) o.vy *= -1;
+        }
         o.x += o.vx;
-        if (o.y < o.minY || o.y > o.maxY) o.vy *= -1;
         if (o.x < o.minX || o.x > o.maxX) o.vx *= -1;
+        
+        // Rotera helikopter och raketer
+        if (o.spriteImg === 'obs_helicopter' || o.emoji === '🚁') o.angle = (o.angle || 0);
+        else o.angle = (o.angle || 0) + 0.02;
         
         if (state === 'FLYING') {
             let dist = Math.hypot(dog.x - o.x, dog.y - o.y);
             if (dist < dog.radius + o.radius) {
-                // Boing!
                 playSqueak();
                 dog.vy = -12;
                 dog.vx *= -1.5; 
@@ -444,8 +482,19 @@ function draw() {
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     obstacles.forEach(o => {
-        ctx.font = `${o.size}px Arial`;
-        ctx.fillText(o.emoji, o.x, o.y);
+        ctx.save();
+        ctx.translate(o.x, o.y);
+        ctx.rotate(o.angle || 0);
+        const half = o.size / 2;
+        if (o.spriteImg && images[o.spriteImg]) {
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            ctx.drawImage(images[o.spriteImg], -half, -half, o.size, o.size);
+        } else {
+            ctx.font = `${o.size}px Arial`;
+            ctx.fillText(o.emoji, 0, 0);
+        }
+        ctx.restore();
     });
     
     // Draw Wolf
