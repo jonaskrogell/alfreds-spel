@@ -1,0 +1,139 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+body {
+    background-color: #222;
+    overflow: hidden;
+    font-family: 'Fredoka One', cursive;
+    background: url('assets/bg.png') no-repeat center center fixed;
+    background-size: cover;
+}
+
+#game-container {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.4); /* Darken bg a bit so cards pop */
+}
+
+#ui-layer {
+    margin-bottom: 20px;
+    z-index: 10;
+}
+
+#score-text {
+    font-size: 36px;
+    color: #fff;
+    text-shadow: 3px 3px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000;
+}
+
+#memory-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(4, 1fr);
+    gap: 15px;
+    width: 80vmin;
+    max-width: 600px;
+    height: 80vmin;
+    max-height: 600px;
+}
+
+.memory-card {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+    perspective: 1000px; /* 3D flip effect */
+    border-radius: 15px;
+}
+
+.memory-card-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    text-align: center;
+    transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transform-style: preserve-3d;
+    box-shadow: 0 8px 15px rgba(0,0,0,0.3);
+    border-radius: 15px;
+}
+
+.memory-card.flipped .memory-card-inner {
+    transform: rotateY(180deg);
+}
+
+.memory-card.matched .memory-card-inner {
+    transform: rotateY(180deg) scale(0.95);
+    box-shadow: 0 0 20px #FFD700, 0 0 40px #FFD700;
+}
+
+.memory-card-front, .memory-card-back {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    border-radius: 15px;
+    border: 4px solid #fff;
+    background-color: #fce4ec;
+}
+
+.memory-card-back {
+    background-size: cover;
+    background-position: center;
+    background-color: #81D4FA;
+    transform: rotateY(0deg);
+}
+
+.memory-card-front {
+    transform: rotateY(180deg);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.memory-card-front img {
+    width: 80%;
+    height: 80%;
+    object-fit: contain;
+    filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.3));
+}
+
+#message-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.5);
+    font-size: 80px;
+    color: #FFD700;
+    text-shadow: 4px 4px 0 #FF4500, -2px -2px 0 #FF4500, 2px -2px 0 #FF4500, -2px 2px 0 #FF4500;
+    opacity: 0;
+    transition: opacity 0.5s ease-in-out, transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    text-align: center;
+    white-space: nowrap;
+    z-index: 100;
+    pointer-events: none;
+}
+
+#message-text.show {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+}
+
+@media (max-width: 500px) {
+    #score-text {
+        font-size: 24px;
+    }
+    #memory-grid {
+        gap: 10px;
+    }
+}

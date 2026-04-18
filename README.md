@@ -62,6 +62,15 @@ A physics-based drag-and-shoot game where you throw a plush toy dog into a toy b
 *   **Goal:** Successfully score by dropping the plush toy directly into the toy bin and celebrate with confetti.
 *   **Tech Stack:** Vanilla JavaScript and HTML5 Canvas (2D) with custom transparency filtering logic.
 
+### 7. Plushie Memory (Gosedjurs-Minne) 🧸
+A cozy and colorful memory game designed specifically for younger children, reusing the warm graphics from the plush toss game.
+
+![Gosedjurs-Minne](screenshot_memory.png)
+
+*   **Controls:** Tap the cards to flip them.
+*   **Goal:** Find all 8 pairs of cuddly plushies to win the game and see the confetti!
+*   **Tech Stack:** Vanilla JavaScript and HTML5 with CSS 3D Transforms and Web Audio API for soft sound effects.
+
 ## How to Run
 
 Since these games use local assets (such as sound effects generated via Web Audio API or textures), they need to be served from a local web server to prevent cross-origin issues in modern web browsers.

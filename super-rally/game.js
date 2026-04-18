@@ -194,15 +194,17 @@ function initLevel() {
     // Sort scenery so big objects (mountains, windmills, houses) draw under smaller ones if needed, 
     // or just rely on random order which looks organic.
 
-    // 3. Setup AI cars (8 opponents)
+    // 3. Setup AI cars (16 opponents)
     const aiColors = ['#1e90ff', '#ffa502', '#e056fd', '#2ed573', '#ff6b81', '#ffffff', '#34495e', '#f1c40f'];
     aiCars = [];
-    for(let i=0; i<8; i++) {
+    for(let i=0; i<16; i++) {
         let ai = {
             x: 0, y: 0, angle: 0,
             speed: 5.0 + Math.random()*2.5, // 5.0 - 7.5 speed
             color: aiColors[i % aiColors.length],
-            targetIndex: (i * 35 + 40) % trackPoints.length
+            targetIndex: (i * 20 + 40) % trackPoints.length,
+            laneOffset: (Math.random() - 0.5) * 140, // Random lane spread
+            timeToLaneChange: Math.random() * 10 
         };
         let pt = trackPoints[ai.targetIndex];
         let nextPt = trackPoints[(ai.targetIndex + 5) % trackPoints.length];
@@ -457,11 +459,14 @@ function update(dt) {
 
     let maxTurnSpeed = 0.05;
     let turnSpeed = maxTurnSpeed * (car.speed / 9);
-    if (car.speed < 2) turnSpeed = maxTurnSpeed * 0.4;
+    if (Math.abs(car.speed) < 2 && Math.abs(car.speed) > 0.1) {
+        turnSpeed = Math.sign(car.speed) * maxTurnSpeed * 0.4;
+    } else if (Math.abs(car.speed) <= 0.1) {
+        turnSpeed = 0;
+    }
 
     if (isLeft) car.angle -= turnSpeed;
     if (isRight) car.angle += turnSpeed;
-
 
     // 2. On-Road & Edge collisions
     let minDist = Infinity;
@@ -498,26 +503,53 @@ function update(dt) {
         }
     }
 
-    // 3. Player Speed
-    const currentMaxSpeed = onRoad ? 9.0 : 3.5;
-    const acc = onRoad ? 0.2 : 0.1;
-    const dec = 0.4;
+    // 3. Player Speed using Gear Slider
+    const gearSlider = document.getElementById('gear-slider');
+    const gearMult = parseFloat(gearSlider.value); // -1 (Reverse), 0 (Neutral), 1 (Forward)
+
+    const baseMaxSpeed = onRoad ? 9.0 : 3.5;
+    const currentMaxSpeed = baseMaxSpeed * gearMult;
+    
+    // Braking is faster than accelerating
+    const isBraking = (car.speed > 0 && currentMaxSpeed <= 0) || (car.speed < 0 && currentMaxSpeed >= 0);
+    const accelRate = onRoad ? 0.2 : 0.1;
+    const brakeRate = 0.5;
+    
+    const speedChange = isBraking ? brakeRate : accelRate;
 
     if (car.speed < currentMaxSpeed) {
-        car.speed += acc;
+        car.speed = Math.min(car.speed + speedChange, currentMaxSpeed);
     } else if (car.speed > currentMaxSpeed) {
-        car.speed -= dec;
+        car.speed = Math.max(car.speed - speedChange, currentMaxSpeed);
     }
-    if (car.speed < 0) car.speed = 0;
 
     car.x += Math.cos(car.angle) * car.speed;
     car.y += Math.sin(car.angle) * car.speed;
 
     // 4. AI Cars Update
     aiCars.forEach(ai => {
+        // Change lane behavior
+        ai.timeToLaneChange -= dt / 1000;
+        if (ai.timeToLaneChange <= 0) {
+            ai.laneOffset = (Math.random() - 0.5) * 160; // Max offset 80 left/right
+            ai.timeToLaneChange = 5 + Math.random() * 8; // Switch every 5-13 seconds
+        }
+
         let targetPt = trackPoints[ai.targetIndex];
-        let dx = targetPt.x - ai.x;
-        let dy = targetPt.y - ai.y;
+        let nextTargetPt = trackPoints[(ai.targetIndex + 1) % trackPoints.length];
+        
+        // Calculate tangent to find perpendicular vector
+        let tDx = nextTargetPt.x - targetPt.x;
+        let tDy = nextTargetPt.y - targetPt.y;
+        let len = Math.hypot(tDx, tDy) || 1;
+        let nx = -tDy / len; // Normal vector X
+        let ny = tDx / len;  // Normal vector Y
+        
+        let aimX = targetPt.x + nx * ai.laneOffset;
+        let aimY = targetPt.y + ny * ai.laneOffset;
+
+        let dx = aimX - ai.x;
+        let dy = aimY - ai.y;
         let dist = Math.hypot(dx, dy);
         
         let targetAngle = Math.atan2(dy, dx);
@@ -530,7 +562,7 @@ function update(dt) {
         ai.x += Math.cos(ai.angle) * ai.speed;
         ai.y += Math.sin(ai.angle) * ai.speed;
 
-        if (dist < 120) {
+        if (dist < 120 || Math.hypot(targetPt.x - ai.x, targetPt.y - ai.y) < 120) {
             ai.targetIndex = (ai.targetIndex + 2) % trackPoints.length; 
         }
 

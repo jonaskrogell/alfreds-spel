@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Gosedjursminne!</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <a id="back-btn" href="javascript:void(0)" onclick="window.parent.postMessage('goBack', '*')" style="position: absolute; top: 20px; left: 20px; font-size: 30px; text-decoration: none; z-index: 1000; background: rgba(255,255,255,0.8); border-radius: 50%; width: 50px; height: 50px; text-align: center; line-height: 50px; border: 3px solid #FF1493;">↩️</a>
+    <div id="game-container">
+        <div id="ui-layer">
+            <h1 id="score-text">⭐ Par hittade: 0 / 8</h1>
+        </div>
+        <div id="memory-grid">
+            <!-- Cards will be generated here by JS -->
+        </div>
+        <div id="message-text">Bra jobbat!</div>
+    </div>
+    <script src="game.js"></script>
+</body>
+</html>

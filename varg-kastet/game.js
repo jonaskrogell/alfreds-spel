@@ -50,6 +50,17 @@ let wolf = {
 
 let particles = [];
 
+let obstacle = {
+    active: false,
+    x: 0,
+    y: 0,
+    radius: 40,
+    vy: 2,
+    emoji: '🎈',
+    minY: 0,
+    maxY: 0
+};
+
 // Web Audio API for sounds
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
@@ -219,6 +230,23 @@ function resetDog() {
     dog.vy = 0;
 }
 
+function randomizeLevel() {
+    bin.x = W * 0.6 + Math.random() * (W * 0.25);
+    bin.y = (H - bin.height - H * 0.05) - (Math.random() * H * 0.2);
+    
+    if (score >= 20 && Math.random() > 0.5) {
+        obstacle.active = true;
+        obstacle.x = W * 0.45 + Math.random() * (W * 0.1);
+        obstacle.y = H * 0.5;
+        obstacle.minY = H * 0.3;
+        obstacle.maxY = H * 0.7;
+        obstacle.vy = (Math.random() > 0.5 ? 2 : -2) + (score/50);
+        obstacle.emoji = ['🎈', '☁️', '🛸'][Math.floor(Math.random() * 3)];
+    } else {
+        obstacle.active = false;
+    }
+}
+
 function showMessage(msg, isSuccess) {
     messageText.textContent = msg;
     messageText.style.color = isSuccess ? '#00FF00' : '#FF4500';
@@ -227,6 +255,7 @@ function showMessage(msg, isSuccess) {
     setTimeout(() => {
         messageText.classList.remove('show');
         resetDog();
+        if (isSuccess) randomizeLevel();
         state = 'IDLE';
     }, 2000);
 }
@@ -320,12 +349,16 @@ function update() {
         dog.y += dog.vy;
         
         // Check collision with bin (magnetize a bit for kids)
-        let targetX = bin.x + bin.width * 0.5;
-        let targetY = bin.y + bin.height * 0.2; // Top opening of the bin
+        // Hitbox: måste falla in i korgen (x inuti, y passera överkanten)
+        let binLeft = bin.x + bin.width * 0.25;
+        let binRight = bin.x + bin.width * 0.75;
+        let binTop = bin.y + bin.height * 0.1;
+        let binBottom = bin.y + bin.height * 0.4;
         
-        let distToTarget = Math.hypot(dog.x - targetX, dog.y - targetY);
+        let inXBounds = dog.x > binLeft && dog.x < binRight;
+        let inYBounds = dog.y > binTop && dog.y < binBottom;
 
-        if (distToTarget < bin.hitRadius && dog.vy > 0) {
+        if (inXBounds && inYBounds && dog.vy > 0) {
             // Hit!
             playCheer();
             state = 'SCORED';
@@ -338,6 +371,23 @@ function update() {
             playSqueak();
             state = 'MISSED';
             showMessage('Ooops! Försök igen.', false);
+        }
+    }
+    
+    if (obstacle.active) {
+        obstacle.y += obstacle.vy;
+        if (obstacle.y < obstacle.minY || obstacle.y > obstacle.maxY) obstacle.vy *= -1;
+        
+        if (state === 'FLYING') {
+            let dist = Math.hypot(dog.x - obstacle.x, dog.y - obstacle.y);
+            if (dist < dog.radius + obstacle.radius) {
+                // Boing!
+                playSqueak();
+                dog.vy = -10;
+                dog.vx *= -0.8;
+                dog.x += dog.vx;
+                dog.y += dog.vy;
+            }
         }
     }
     
@@ -371,6 +421,14 @@ function draw() {
     // Draw Bin
     if (images.bin) {
         ctx.drawImage(images.bin, bin.x, bin.y, bin.width, bin.height);
+    }
+    
+    // Draw Obstacle
+    if (obstacle.active) {
+        ctx.font = "80px Arial";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(obstacle.emoji, obstacle.x, obstacle.y);
     }
     
     // Draw Wolf
