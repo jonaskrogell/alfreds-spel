@@ -53,6 +53,15 @@ A top-down procedurally generated racing game where cars auto-accelerate and pla
 *   **Goal:** Complete laps around the procedurally generated circuit! Stay on the wide track so you don't lose speed, and bounce off the tires and 8 other diverse AI racers.
 *   **Tech Stack:** Vanilla JavaScript and HTML5 Canvas (2D) utilizing Catmull-Rom splines for random track generation.
 
+### 6. Plush Toss (Mjukiskastet) 🐺
+A physics-based drag-and-shoot game where you throw a plush toy dog into a toy bin.
+
+![Mjukiskastet](screenshot_varg.png)
+
+*   **Controls:** Drag the dog back with your finger/mouse and release to launch it towards the bin.
+*   **Goal:** Successfully score by dropping the plush toy directly into the toy bin and celebrate with confetti.
+*   **Tech Stack:** Vanilla JavaScript and HTML5 Canvas (2D) with custom transparency filtering logic.
+
 ## How to Run
 
 Since these games use local assets (such as sound effects generated via Web Audio API or textures), they need to be served from a local web server to prevent cross-origin issues in modern web browsers.
