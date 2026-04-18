@@ -241,26 +241,15 @@ function randomizeLevel() {
 
     obstacles = [];
     if (score >= 10 && Math.random() > 0.2) {
-        let maxObstacles = 1 + Math.floor(score / 30);
-        if (maxObstacles > 4) maxObstacles = 4;
-        let numSpawns = Math.floor(Math.random() * maxObstacles) + 1;
+        // Max 2 hinder åt gången
+        let numSpawns = score >= 40 ? 2 : 1;
         
-        // Alla hinderstyper: img-sprite ELLER emoji fallback
+        // Bara ordentliga bildbaserade hinder
         const obstacleTypes = [
-            // Bildbaserade hinder
-            { img: 'obs_helicopter', emoji: null, motionStyle: 'horizontal', speedMod: 1.5 },
-            { img: 'obs_butterfly',  emoji: null, motionStyle: 'sine',       speedMod: 0.8 },
-            { img: 'obs_duck',       emoji: null, motionStyle: 'vertical',    speedMod: 1.0 },
-            { img: 'obs_balloon',    emoji: null, motionStyle: 'vertical',    speedMod: 0.6 },
-            // Emoji-hinder (roliga bonus-varianter)
-            { img: null, emoji: '🛸', motionStyle: 'horizontal', speedMod: 2.0 },
-            { img: null, emoji: '🚁', motionStyle: 'sine',       speedMod: 1.2 },
-            { img: null, emoji: '🐝', motionStyle: 'vertical',   speedMod: 1.8 },
-            { img: null, emoji: '👻', motionStyle: 'horizontal', speedMod: 1.0 },
-            { img: null, emoji: '☄️', motionStyle: 'horizontal', speedMod: 2.5 },
-            { img: null, emoji: '🦖', motionStyle: 'vertical',   speedMod: 0.9 },
-            { img: null, emoji: '🌈', motionStyle: 'sine',       speedMod: 0.5 },
-            { img: null, emoji: '🤱', motionStyle: 'vertical',   speedMod: 1.1 },
+            { img: 'obs_helicopter', motionStyle: 'horizontal', speedMod: 1.5 },
+            { img: 'obs_butterfly',  motionStyle: 'sine',       speedMod: 0.8 },
+            { img: 'obs_duck',       motionStyle: 'vertical',   speedMod: 1.0 },
+            { img: 'obs_balloon',    motionStyle: 'vertical',   speedMod: 0.6 },
         ];
 
         for (let i = 0; i < numSpawns; i++) {
