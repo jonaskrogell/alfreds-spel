@@ -50,16 +50,7 @@ let wolf = {
 
 let particles = [];
 
-let obstacle = {
-    active: false,
-    x: 0,
-    y: 0,
-    radius: 40,
-    vy: 2,
-    emoji: '🎈',
-    minY: 0,
-    maxY: 0
-};
+let obstacles = [];
 
 // Web Audio API for sounds
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -224,6 +215,8 @@ window.addEventListener('resize', () => {
 });
 
 function resetDog() {
+    dog.startX = wolf.x + wolf.width * 0.8;
+    dog.startY = wolf.y + wolf.height * 0.3;
     dog.x = dog.startX;
     dog.y = dog.startY;
     dog.vx = 0;
@@ -233,17 +226,39 @@ function resetDog() {
 function randomizeLevel() {
     bin.x = W * 0.6 + Math.random() * (W * 0.25);
     bin.y = (H - bin.height - H * 0.05) - (Math.random() * H * 0.2);
-    
-    if (score >= 20 && Math.random() > 0.5) {
-        obstacle.active = true;
-        obstacle.x = W * 0.45 + Math.random() * (W * 0.1);
-        obstacle.y = H * 0.5;
-        obstacle.minY = H * 0.3;
-        obstacle.maxY = H * 0.7;
-        obstacle.vy = (Math.random() > 0.5 ? 2 : -2) + (score/50);
-        obstacle.emoji = ['🎈', '☁️', '🛸'][Math.floor(Math.random() * 3)];
-    } else {
-        obstacle.active = false;
+
+    wolf.x = W * 0.02 + Math.random() * (W * 0.25); // Vargen byter position!
+    resetDog(); // Uppdatera hundens startposition direkt
+
+    obstacles = [];
+    if (score >= 10 && Math.random() > 0.2) {
+        let maxObstacles = 1 + Math.floor(score / 30);
+        if (maxObstacles > 4) maxObstacles = 4;
+        let numSpawns = Math.floor(Math.random() * maxObstacles) + 1;
+        
+        // Extra storlekar och variationer
+        const emojis = ['🎈', '☁️', '🛸', '🪁', '🚁', '🐝', '👻'];
+        const fontSizes = [120, 140, 160, 180]; // Mycket större!
+
+        for (let i = 0; i < numSpawns; i++) {
+            let isHorizontal = Math.random() > 0.5;
+            let oSizeIndex = Math.floor(Math.random() * fontSizes.length);
+            let s = fontSizes[oSizeIndex];
+            
+            obstacles.push({
+                x: W * 0.3 + Math.random() * (W * 0.3),
+                y: H * 0.2 + Math.random() * (H * 0.5),
+                radius: s * 0.45,
+                size: s,
+                vy: isHorizontal ? 0 : (Math.random() > 0.5 ? 1 : -1) * (2 + Math.random() * 3),
+                vx: isHorizontal ? (Math.random() > 0.5 ? 1 : -1) * (2 + Math.random() * 3) : 0,
+                emoji: emojis[Math.floor(Math.random() * emojis.length)],
+                minY: H * 0.1,
+                maxY: H * 0.8,
+                minX: W * 0.3,
+                maxX: W * 0.7
+            });
+        }
     }
 }
 
@@ -364,7 +379,7 @@ function update() {
             state = 'SCORED';
             score += 10;
             scoreText.textContent = `⭐ Poäng: ${score}`;
-            createConfetti(targetX, targetY);
+            createConfetti(dog.x, dog.y);
             showMessage('Bravo!! 🐶📥', true);
         } else if (dog.y > H + dog.radius) {
             // Missed!
@@ -374,22 +389,24 @@ function update() {
         }
     }
     
-    if (obstacle.active) {
-        obstacle.y += obstacle.vy;
-        if (obstacle.y < obstacle.minY || obstacle.y > obstacle.maxY) obstacle.vy *= -1;
+    obstacles.forEach(o => {
+        o.y += o.vy;
+        o.x += o.vx;
+        if (o.y < o.minY || o.y > o.maxY) o.vy *= -1;
+        if (o.x < o.minX || o.x > o.maxX) o.vx *= -1;
         
         if (state === 'FLYING') {
-            let dist = Math.hypot(dog.x - obstacle.x, dog.y - obstacle.y);
-            if (dist < dog.radius + obstacle.radius) {
+            let dist = Math.hypot(dog.x - o.x, dog.y - o.y);
+            if (dist < dog.radius + o.radius) {
                 // Boing!
                 playSqueak();
-                dog.vy = -10;
-                dog.vx *= -0.8;
-                dog.x += dog.vx;
-                dog.y += dog.vy;
+                dog.vy = -12;
+                dog.vx *= -1.5; 
+                dog.x += dog.vx * 2;
+                dog.y += dog.vy * 2;
             }
         }
-    }
+    });
     
     // Update particles
     for (let i = particles.length - 1; i >= 0; i--) {
@@ -423,13 +440,13 @@ function draw() {
         ctx.drawImage(images.bin, bin.x, bin.y, bin.width, bin.height);
     }
     
-    // Draw Obstacle
-    if (obstacle.active) {
-        ctx.font = "80px Arial";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(obstacle.emoji, obstacle.x, obstacle.y);
-    }
+    // Draw Obstacles
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    obstacles.forEach(o => {
+        ctx.font = `${o.size}px Arial`;
+        ctx.fillText(o.emoji, o.x, o.y);
+    });
     
     // Draw Wolf
     if (images.wolf) {
