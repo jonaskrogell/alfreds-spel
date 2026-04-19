@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Magiska Lekrummet – Stjärnjakten</title>
+    <meta name="description" content="Hitta alla gömda stjärnor i det magiska lekrummet!">
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;900&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="game-container">
+        <!-- Background image — always fills entire viewport -->
+        <img src="assets/new_room_bg.png" alt="Rummet" id="bg-img">
+
+        <!-- Night overlay — dark tint shown in night mode -->
+        <div id="night-overlay"></div>
+
+        <!-- Game canvas — stars and toys live here, same coordinate system -->
+        <div id="game-canvas">
+            <!-- Stars and toys are injected by JS here -->
+        </div>
+
+        <!-- Toy box — clickable to spawn extra toys -->
+        <img src="assets/toy_box.png" id="toy-box" alt="Leksakslåda">
+
+        <!-- Vignette overlay for depth -->
+        <div id="vignette"></div>
+
+        <!-- UI -->
+        <div id="ui-layer">
+            <div class="score-board" id="score-board">
+                <span class="star-icon">⭐</span>
+                <span id="score-text">0 / 5</span>
+            </div>
+            <button id="night-switch" aria-label="Dag/Natt">🌙</button>
+        </div>
+
+        <!-- Victory message -->
+        <div id="victory-overlay">
+            <div id="victory-message">
+                <h1>Alla stjärnor hittade! 🌟</h1>
+                <button id="play-again-btn">Spela igen!</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>
