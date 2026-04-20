@@ -63,6 +63,7 @@ case 'planks':
             for(let i=0;i<8;i++){ ctx.fillRect(2+i*2, 2, 1, 3+Math.floor(Math.random()*2)); }
             break;
         case 'cloud': fillArea('#FFFFFF', 0, 0, 16, 16, 0.05); break;
+        case 'fish': fillArea('#2196F3', 0, 0, 16, 16, 0.2); break;
     }
 
     const tex = new THREE.CanvasTexture(canvas);
@@ -109,5 +110,6 @@ export const BLOCKS = {
     SAND: 7,
     GLASS: 8,
     PLANKS: 9,
-    CLOUD: 10
+    CLOUD: 10,
+    FISH: 11
 };

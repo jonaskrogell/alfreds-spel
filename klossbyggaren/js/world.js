@@ -75,6 +75,11 @@ class Chunk {
                     } else if (y <= WATER_LEVEL) {
                         this.data[idx] = BLOCKS.SAND;  // Ocean floor is sand
                     }
+                    // Fish at ocean surface
+                    if (y === WATER_LEVEL && this.getBlock(x, y+1, z) === BLOCKS.AIR && Math.random() < 0.4) {
+                        this.data[this.getIndex(x, y+1, z)] = BLOCKS.FISH;
+                    }
+                    }
                 }
                 
                 // Vegetations-logik
@@ -248,6 +253,54 @@ class Chunk {
             }
         };
         
+
+
+        // Major road system for easy navigation between areas
+        this.createMajorRoads = function() {
+            const locations = [
+                {x: 16, z: 16, name: 'spawn'},
+                {x: 40, z: 20, name: 'village1'},
+                {x: 60, z: 40, name: 'village2'},
+                {x: 20, z: 60, name: 'forest'},
+                {x: 70, z: 20, name: 'mountain'},
+                {x: 20, z: 75, name: 'lake'}
+            ];
+            for (let i = 0; i < locations.length; i++) {
+                for (let j = i + 1; j < locations.length; j++) {
+                    this.createRoadBetween(locations[i], locations[j]);
+                }
+            }
+        };
+        
+        this.createRoadBetween = function(loc1, loc2) {
+            let x1 = loc1.x, z1 = loc1.z;
+            let x2 = loc2.x, z2 = loc2.z;
+            const roadWidth = 3;
+            const minX = Math.min(x1, x2) - 1;
+            const maxX = Math.max(x1, x2) + 1;
+            const minZ = Math.min(z1, z2) - 1;
+            const maxZ = Math.max(z1, z2) + 1;
+            for (let x = minX; x <= maxX; x++) {
+                for (let w = -Math.floor(roadWidth/2); w <= Math.floor(roadWidth/2); w++) {
+                    this.placeMajorRoadAt(x, z1 + w);
+                }
+            }
+            for (let z = minZ; z <= maxZ; z++) {
+                for (let w = -Math.floor(roadWidth/2); w <= Math.floor(roadWidth/2); w++) {
+                    this.placeMajorRoadAt(x2 + w, z);
+                }
+            }
+        };
+        
+        this.placeMajorRoadAt = function(x, z) {
+            for (let y = this.getTopBlockY(x, z) - 1; y >= 0; y--) {
+                const block = this.getBlock(x, y, z);
+                if (block !== BLOCKS.WATER && block !== BLOCKS.CLOUD) {
+                    this.data[this.getIndex(x, y, z)] = BLOCKS.GRAVEL;
+                    if (y === this.getTopBlockY(x, z) - 1) break; // Top road layer
+                }
+            }
+        };
         buildMesh() {
         for (const type in this.meshes) { this.scene.remove(this.meshes[type]); if (this.meshes[type].geometry) this.meshes[type].geometry.dispose(); }
         this.meshes = {};
