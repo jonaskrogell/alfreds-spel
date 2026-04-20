@@ -157,7 +157,13 @@ class Chunk {
                     if (d < 2.5) {
                         const wx = x+lx, wy = y+ly, wz = z+lz;
                         if (wx >= 0 && wx < CHUNK_SIZE && wy >= 0 && wy < CHUNK_HEIGHT && wz >= 0 && wz < CHUNK_SIZE) {
-                            if (this.getBlock(wx, wy, wz) === BLOCKS.AIR) this.data[this.getIndex(wx, wy, wz)] = BLOCKS.LEAVES;
+                            if (this.getBlock(wx, wy, wz) === BLOCKS.AIR) {
+                        this.data[this.getIndex(wx, wy, wz)] = BLOCKS.LEAVES;
+                        // Add bird on tree sometimes
+                        if (Math.random() < 0.2 && wy + 2 < CHUNK_HEIGHT) {
+                            this.data[this.getIndex(wx, wy + 1, wz)] = BLOCKS.BIRD;
+                        }
+                    }
                         }
                     }
                 }
@@ -208,7 +214,41 @@ class Chunk {
         }
     }
     
-    buildMesh() {
+        // Create gravel roads connecting houses
+        this.createGravelRoad = function(houses) {
+            if (houses.length < 2) return;
+            
+            for (let i = 0; i < houses.length - 1; i++) {
+                const h1 = houses[i];
+                const h2 = houses[i + 1];
+                
+                // Simple road: straight line then turn
+                const midX = Math.floor((h1.x + h2.x) / 2);
+                
+                // Horizontal then vertical
+                for (let x = Math.min(h1.x, midX); x <= Math.max(h1.x, midX); x++) {
+                    this.placeRoadAt(x, h1.z);
+                }
+                for (let z = Math.min(h1.z, h2.z); z <= Math.max(h1.z, h2.z); z++) {
+                    this.placeRoadAt(midX, z);
+                }
+                for (let x = Math.min(midX, h2.x); x <= Math.max(midX, h2.x); x++) {
+                    this.placeRoadAt(x, h2.z);
+                }
+            }
+        };
+        
+        this.placeRoadAt = function(x, z) {
+            for (let y = this.getTopBlockY(x, z) - 1; y > 0; y--) {
+                const block = this.getBlock(x, y, z);
+                if (block === BLOCKS.DIRT || block === BLOCKS.STONE) {
+                    this.data[this.getIndex(x, y, z)] = BLOCKS.GRAVEL;
+                    break;
+                }
+            }
+        };
+        
+        buildMesh() {
         for (const type in this.meshes) { this.scene.remove(this.meshes[type]); if (this.meshes[type].geometry) this.meshes[type].geometry.dispose(); }
         this.meshes = {};
         const counts = {}; for(let key in BLOCKS) counts[BLOCKS[key]] = 0;

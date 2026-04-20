@@ -15,11 +15,14 @@ export class Player {
         
         this.onGround = false;
         this.inWater = false;
+        this.isFlying = false;
         
         this.speed = 5.0;
         this.waterSpeed = 2.5;
+        this.flySpeed = 25.0;  // 5x speed
         this.jumpForce = 9.0;
         this.gravity = 25.0;
+        this.flyGravity = 5.0;  // Reduced gravity when flying
         
         this.input = new THREE.Vector3();
         this.jumpPressed = false;
@@ -68,6 +71,17 @@ export class Player {
     }
     
     update(dt) {
+        // Toggle flying mode with X key (handled in input)
+        // Reduce gravity when flying
+        let currentGravity = this.gravity;
+        if (this.isFlying) {
+            currentGravity = this.flyGravity;
+            // Prevent falling too fast when flying
+            if (this.velocity.y < -this.flySpeed) {
+                this.velocity.y = -this.flySpeed * 0.5;
+            }
+        }
+        
         // Kontrollera om vi är i vatten
         const footBlock = this.world.getBlock(this.position.x, this.position.y + 0.1, this.position.z);
         this.inWater = (footBlock === BLOCKS.WATER);
@@ -78,7 +92,9 @@ export class Player {
         }
 
         // Gravitation
-        const currentGravity = this.inWater ? this.gravity * 0.2 : this.gravity;
+        let effectiveGravity = this.gravity;
+        if (this.isFlying) effectiveGravity = this.flyGravity;
+        const currentGravity = this.inWater ? effectiveGravity * 0.2 : effectiveGravity;
         this.velocity.y -= currentGravity * dt;
         
         if (this.inWater && this.velocity.y < -2) this.velocity.y = -2;
@@ -89,7 +105,8 @@ export class Player {
         const right = new THREE.Vector3();
         right.crossVectors(forward, new THREE.Vector3(0, 1, 0)).normalize();
         
-        const currentSpeed = this.inWater ? this.waterSpeed : this.speed;
+        let currentSpeed = this.inWater ? this.waterSpeed : this.speed;
+        if (this.isFlying) currentSpeed = this.flySpeed;
         const velocityX = (forward.x * (-this.input.z) + right.x * this.input.x) * currentSpeed;
         const velocityZ = (forward.z * (-this.input.z) + right.z * this.input.x) * currentSpeed;
         

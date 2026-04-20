@@ -66,6 +66,15 @@ export class InputManager {
             if(e.code === 'KeyE') {
                 this.player.superJump();
             }
+            if(e.code === 'KeyX') {
+                this.player.isFlying = !this.player.isFlying;
+                // Visual feedback
+                if (this.player.isFlying) {
+                    console.log('Flying mode ON');
+                } else {
+                    console.log('Flying mode OFF');
+                }
+            }
         });
         window.addEventListener('keyup', (e) => {
             this.keys[e.code] = false;

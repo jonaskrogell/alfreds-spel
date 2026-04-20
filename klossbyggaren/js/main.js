@@ -5,6 +5,41 @@ import { InputManager } from './input.js';
 import { BLOCKS } from './textures.js';
 import { AudioManager } from './audio.js';
 
+// Game State Management
+const GameState = {
+    isPlaying: false,
+    isPaused: false,
+    saveData: null
+};
+
+// Save/Load System
+function saveGameState() {
+    if (!player) return;
+    const state = {
+        position: { x: player.position.x, y: player.position.y, z: player.position.z },
+        velocity: { x: player.velocity.x, y: player.velocity.y, z: player.velocity.z },
+        isFlying: player.isFlying || false
+    };
+    GameState.saveData = state;
+    try {
+        document.cookie = "gameState=" + encodeURIComponent(JSON.stringify(state)) + "; path=/; max-age=31536000";
+    } catch(e) {
+        try { localStorage.setItem("gameState", JSON.stringify(state)); } catch(e2) {}
+    }
+}
+
+function loadGameState() {
+    try {
+        var cookieMatch = document.cookie.match(/gameState=([^;]+)/);
+        if (cookieMatch) return JSON.parse(decodeURIComponent(cookieMatch[1]));
+    } catch(e) {}
+    try {
+        var saved = localStorage.getItem("gameState");
+        if (saved) return JSON.parse(saved);
+    } catch(e) {}
+    return null;
+}
+
 // Setup Audio
 const audio = new AudioManager();
 
@@ -93,6 +128,7 @@ window.addEventListener('block_select', (e) => {
 });
 
 document.getElementById('btn-start').addEventListener('click', () => { audio.init(); });
+document.getElementById('btn-save').addEventListener('click', function() { saveGameState(); });
 
 function voxelRaycast(origin, direction, maxDist) {
     const dx = direction.x, dy = direction.y, dz = direction.z;
