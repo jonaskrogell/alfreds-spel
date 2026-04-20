@@ -4,7 +4,7 @@ body, html {
     width: 100%;
     height: 100%;
     overflow: hidden;
-    background-color: #87CEEB; /* Himmelsblå */
+    background-color: #87CEEB;
     font-family: 'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', cursive, sans-serif;
     user-select: none;
     -webkit-user-select: none;
@@ -19,6 +19,25 @@ body, html {
     height: 100%;
     z-index: 1;
 }
+
+/* Back button (top-left) */
+#back-btn {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    font-size: 18px;
+    padding: 8px 16px;
+    background: rgba(255,255,255,0.85);
+    color: #333;
+    border: 3px solid #FF1493;
+    border-radius: 14px;
+    cursor: pointer;
+    z-index: 40;
+    font-family: inherit;
+    font-weight: bold;
+}
+
+#back-btn:hover { background: white; }
 
 #crosshair {
     position: absolute;
@@ -38,27 +57,37 @@ body, html {
 }
 
 #crosshair::before {
-    top: 9px;
-    left: 0;
-    width: 20px;
-    height: 2px;
+    top: 9px; left: 0; width: 20px; height: 2px;
 }
-
 #crosshair::after {
-    top: 0;
-    left: 9px;
-    width: 2px;
-    height: 20px;
+    top: 0; left: 9px; width: 2px; height: 20px;
 }
 
-/* Pause Menu */
+/* Flying indicator */
+#fly-indicator {
+    display: none;
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,150,255,0.85);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-weight: bold;
+    z-index: 40;
+    font-size: 18px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+/* Menu */
 #menu {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
+    background: linear-gradient(135deg, rgba(10,50,100,0.92) 0%, rgba(0,20,40,0.92) 100%);
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -68,15 +97,29 @@ body, html {
 }
 
 #menu h1 {
-    font-size: 48px;
-    margin-bottom: 20px;
+    font-size: 56px;
+    margin-bottom: 12px;
     color: #ffd700;
-    text-shadow: 2px 2px 0 #000;
+    text-shadow: 3px 3px 0 #000, 0 0 20px rgba(255,215,0,0.5);
+}
+
+#menu > p {
+    font-size: 22px;
+    margin-bottom: 25px;
+    text-shadow: 1px 1px 0 #000;
+}
+
+.menu-buttons {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 20px;
 }
 
 #btn-start {
-    font-size: 32px;
-    padding: 15px 40px;
+    font-size: 36px;
+    padding: 18px 60px;
     background-color: #4CAF50;
     color: white;
     border: 4px solid #fff;
@@ -84,20 +127,38 @@ body, html {
     cursor: pointer;
     font-family: inherit;
     font-weight: bold;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.35);
     transition: transform 0.2s;
 }
 
-#btn-start:hover {
-    transform: scale(1.1);
+#btn-start:hover { transform: scale(1.08); }
+
+.menu-secondary {
+    font-size: 20px;
+    padding: 10px 30px;
+    background-color: #546E7A;
+    color: white;
+    border: 3px solid #fff;
+    border-radius: 15px;
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: bold;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    transition: transform 0.2s, background-color 0.2s;
 }
 
+.menu-secondary:hover { transform: scale(1.05); background-color: #78909C; }
+
+#btn-new-map { background-color: #E57373; }
+#btn-new-map:hover { background-color: #EF5350; }
+
 .instructions {
-    margin-top: 30px;
+    margin-top: 20px;
     text-align: center;
-    font-size: 18px;
+    font-size: 16px;
     line-height: 1.5;
     text-shadow: 1px 1px 0 #000;
+    max-width: 600px;
 }
 
 /* Touch UI */
@@ -109,7 +170,7 @@ body, html {
     height: 100%;
     pointer-events: none;
     z-index: 20;
-    display: none; /* Visas via JS om touch upptäcks */
+    display: none;
 }
 
 #joystick-zone {
@@ -147,13 +208,13 @@ body, html {
 
 #action-buttons button {
     width: 100px;
-    height: 80px;
+    height: 70px;
     border-radius: 15px;
-    background-color: rgba(255, 255, 255, 0.2);
+    background-color: rgba(255, 255, 255, 0.25);
     border: 2px solid rgba(255, 255, 255, 0.4);
     color: white;
     font-weight: bold;
-    font-size: 18px;
+    font-size: 16px;
     font-family: inherit;
     touch-action: none;
     backdrop-filter: blur(5px);
@@ -176,15 +237,15 @@ body, html {
     transform: translateX(-50%);
     display: flex;
     gap: 5px;
-    background-color: rgba(0, 0, 0, 0.5);
+    background-color: rgba(0, 0, 0, 0.55);
     padding: 10px;
-    border-radius: 10px;
+    border-radius: 12px;
     z-index: 30;
     pointer-events: auto;
 }
 
 .slot {
-    width: 50px;
+    width: 60px;
     height: 50px;
     background-color: rgba(255,255,255,0.2);
     border: 3px solid transparent;
@@ -203,40 +264,51 @@ body, html {
 .slot.active {
     border-color: #ffd700;
     background-color: rgba(255,255,255,0.4);
+    box-shadow: 0 0 12px rgba(255,215,0,0.7);
 }
 
-/* Block previews i slots */
-.slot[data-type="1"] { border-top: 5px solid #4CAF50; background: #795548; } /* Gräs */
-.slot[data-type="2"] { background: #795548; } /* Jord */
-.slot[data-type="3"] { background: #9E9E9E; } /* Sten */
-.slot[data-type="4"] { background: #8D6E63; } /* Trä/Stam */
-.slot[data-type="5"] { background: #2E7D32; } /* Löv */
+/* Block color cues */
+.slot[data-type="1"] { border-top: 4px solid #4CAF50; background: #795548; }
+.slot[data-type="2"] { background: #795548; }
+.slot[data-type="7"] { background: #F4A460; } /* Sand */
+.slot[data-type="3"] { background: #9E9E9E; }
+.slot[data-type="4"] { background: #8D6E63; }
+.slot[data-type="9"] { background: #BCAAA4; }
+.slot[data-type="8"] { background: #B3E5FC; color: #333; }
+.slot[data-type="11"] { background: #8a8577; } /* Gravel */
+.slot[data-type="5"] { background: #2E7D32; }
 
+/* Minimap */
 #minimap {
     position: fixed;
     top: 20px;
     right: 20px;
-    width: 160px;
-    height: 160px;
+    width: 200px;
+    height: 200px;
     border-radius: 50%;
-    border: 3px solid rgba(255, 255, 255, 0.5);
+    border: 3px solid rgba(255, 255, 255, 0.6);
     background: rgba(0, 0, 0, 0.3);
     backdrop-filter: blur(8px);
     z-index: 10;
     pointer-events: none;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
 }
 
 @media (max-width: 768px) {
-    .hide-on-mobile {
-        display: none;
-    }
+    .hide-on-mobile { display: none; }
     #inventory-ui {
-        bottom: 20px;
-        left: 50%;
-        transform: translateX(-50%);
+        bottom: 110px;
+        font-size: 10px;
+    }
+    .slot {
+        width: 44px;
+        height: 40px;
+        font-size: 10px;
     }
     #minimap {
-        width: 120px;
-        height: 120px;
+        width: 140px;
+        height: 140px;
     }
+    #menu h1 { font-size: 42px; }
+    #btn-start { font-size: 28px; padding: 14px 40px; }
 }

@@ -1,34 +1,40 @@
 import * as THREE from 'three';
-import { BLOCKS } from './textures.js';
+import { BLOCKS, SOLID_BLOCKS } from './textures.js';
 
+// Player class - handles movement, collision, jumping, flying
 export class Player {
     constructor(camera, world, audio) {
         this.camera = camera;
         this.world = world;
         this.audio = audio;
-        
+
+        // Position & velocity
         this.position = new THREE.Vector3(16, 35, 16);
         this.velocity = new THREE.Vector3(0, 0, 0);
-        
+
+        // Collider
         this.height = 1.6;
         this.width = 0.6;
-        
+
+        // State flags
         this.onGround = false;
         this.inWater = false;
         this.isFlying = false;
-        
+
+        // Movement tuning
         this.speed = 5.0;
         this.waterSpeed = 2.5;
-        this.flySpeed = 25.0;  // 5x speed
+        this.flySpeed = 25.0; // 5x normal speed
         this.jumpForce = 9.0;
         this.gravity = 25.0;
-        this.flyGravity = 5.0;  // Reduced gravity when flying
-        
+        this.flyGravity = 0.0; // No gravity while flying - controlled vertical motion
+
+        // Input vector (x: strafe, y: vertical intent, z: forward)
         this.input = new THREE.Vector3();
-        this.jumpPressed = false;
         this.stepTimer = 0;
     }
-    
+
+    // Axis-aligned box collision check
     checkCollision(x, y, z) {
         const hw = this.width / 2;
         const minX = Math.floor(x - hw);
@@ -37,12 +43,12 @@ export class Player {
         const maxY = Math.floor(y + this.height);
         const minZ = Math.floor(z - hw);
         const maxZ = Math.floor(z + hw);
-        
+
         for (let bx = minX; bx <= maxX; bx++) {
             for (let by = minY; by <= maxY; by++) {
                 for (let bz = minZ; bz <= maxZ; bz++) {
                     const block = this.world.getBlock(bx, by, bz);
-                    if (block !== BLOCKS.AIR && block !== BLOCKS.WATER && block !== BLOCKS.CLOUD) {
+                    if (SOLID_BLOCKS.has(block) || block === BLOCKS.WOOD) {
                         return true;
                     }
                 }
@@ -50,8 +56,12 @@ export class Player {
         }
         return false;
     }
-    
+
     jump() {
+        if (this.isFlying) {
+            this.velocity.y = this.flySpeed * 0.4; // hold space to fly up
+            return;
+        }
         if (this.onGround) {
             this.velocity.y = this.jumpForce;
             this.onGround = false;
@@ -60,77 +70,119 @@ export class Player {
     }
 
     superJump() {
+        if (this.isFlying) return;
         if (this.onGround || this.inWater) {
             this.velocity.y = this.jumpForce * 2.2;
             this.onGround = false;
             if (this.audio) {
                 this.audio.playJump();
-                setTimeout(() => this.audio.playJump(), 100);
+                setTimeout(() => this.audio && this.audio.playJump(), 100);
             }
         }
     }
-    
-    update(dt) {
-        // Toggle flying mode with X key (handled in input)
-        // Reduce gravity when flying
-        let currentGravity = this.gravity;
+
+    toggleFlying() {
+        this.isFlying = !this.isFlying;
         if (this.isFlying) {
-            currentGravity = this.flyGravity;
-            // Prevent falling too fast when flying
-            if (this.velocity.y < -this.flySpeed) {
-                this.velocity.y = -this.flySpeed * 0.5;
-            }
+            // Cancel any downward velocity when entering fly mode
+            this.velocity.y = 0;
         }
-        
-        // Kontrollera om vi är i vatten
-        const footBlock = this.world.getBlock(this.position.x, this.position.y + 0.1, this.position.z);
+    }
+
+    update(dt) {
+        // Check water state
+        const footBlock = this.world.getBlock(
+            Math.floor(this.position.x),
+            Math.floor(this.position.y + 0.1),
+            Math.floor(this.position.z)
+        );
         this.inWater = (footBlock === BLOCKS.WATER);
 
-        // Simning: Håll in hopp för att stiga i vatten
+        // FLYING MODE: full 3-axis movement controlled by input
+        if (this.isFlying) {
+            const forward = new THREE.Vector3();
+            this.camera.getWorldDirection(forward);
+            forward.y = 0; forward.normalize();
+            const right = new THREE.Vector3();
+            right.crossVectors(forward, new THREE.Vector3(0, 1, 0)).normalize();
+
+            const vx = (forward.x * (-this.input.z) + right.x * this.input.x) * this.flySpeed;
+            const vz = (forward.z * (-this.input.z) + right.z * this.input.x) * this.flySpeed;
+            // Vertical: use input.y (space = up)
+            let vy = 0;
+            if (this.input.y > 0) vy = this.flySpeed * 0.6; // up
+            // Downward when shift is held is not currently bound - player can land by toggling off fly
+            this.velocity.set(vx, vy, vz);
+
+            // Apply motion with collision
+            this.moveWithCollision(dt);
+            return;
+        }
+
+        // Swimming: hold jump to rise in water
         if (this.inWater && this.input.y > 0) {
             this.velocity.y = 4.0;
         }
 
-        // Gravitation
-        let effectiveGravity = this.gravity;
-        if (this.isFlying) effectiveGravity = this.flyGravity;
-        const currentGravity = this.inWater ? effectiveGravity * 0.2 : effectiveGravity;
-        this.velocity.y -= currentGravity * dt;
-        
+        // Gravity (reduced in water)
+        const gForce = this.inWater ? this.gravity * 0.2 : this.gravity;
+        this.velocity.y -= gForce * dt;
+
+        // Terminal velocity in water
         if (this.inWater && this.velocity.y < -2) this.velocity.y = -2;
-        
+
+        // Compute forward/right from camera
         const forward = new THREE.Vector3();
         this.camera.getWorldDirection(forward);
         forward.y = 0; forward.normalize();
         const right = new THREE.Vector3();
         right.crossVectors(forward, new THREE.Vector3(0, 1, 0)).normalize();
-        
-        let currentSpeed = this.inWater ? this.waterSpeed : this.speed;
-        if (this.isFlying) currentSpeed = this.flySpeed;
-        const velocityX = (forward.x * (-this.input.z) + right.x * this.input.x) * currentSpeed;
-        const velocityZ = (forward.z * (-this.input.z) + right.z * this.input.x) * currentSpeed;
-        
-        if (this.onGround && (velocityX !== 0 || velocityZ !== 0)) {
+
+        const curSpeed = this.inWater ? this.waterSpeed : this.speed;
+        this.velocity.x = (forward.x * (-this.input.z) + right.x * this.input.x) * curSpeed;
+        this.velocity.z = (forward.z * (-this.input.z) + right.z * this.input.x) * curSpeed;
+
+        // Footsteps sfx
+        if (this.onGround && (this.velocity.x !== 0 || this.velocity.z !== 0)) {
             this.stepTimer += dt;
             if (this.stepTimer > 0.35) {
-                if (this.audio) this.audio.playStep(); 
+                if (this.audio) this.audio.playStep();
                 this.stepTimer = 0;
             }
         }
-        
-        if(velocityX !== 0) {
-            const nextX = this.position.x + velocityX * dt;
-            if (!this.checkCollision(nextX, this.position.y, this.position.z)) this.position.x = nextX;
+
+        this.moveWithCollision(dt);
+
+        // Fail-safe: if player falls too far, teleport up
+        if (this.position.y < -10) {
+            this.position.y = 40;
+            this.velocity.y = 0;
         }
-        if(velocityZ !== 0) {
-            const nextZ = this.position.z + velocityZ * dt;
-            if (!this.checkCollision(this.position.x, this.position.y, nextZ)) this.position.z = nextZ;
+    }
+
+    // Apply velocity with axis-separated collision
+    moveWithCollision(dt) {
+        // X axis
+        const nextX = this.position.x + this.velocity.x * dt;
+        if (!this.checkCollision(nextX, this.position.y, this.position.z)) {
+            this.position.x = nextX;
+        } else if (!this.isFlying) {
+            this.velocity.x = 0;
         }
-        
+
+        // Z axis
+        const nextZ = this.position.z + this.velocity.z * dt;
+        if (!this.checkCollision(this.position.x, this.position.y, nextZ)) {
+            this.position.z = nextZ;
+        } else if (!this.isFlying) {
+            this.velocity.z = 0;
+        }
+
+        // Y axis (with ground detection)
         this.onGround = false;
         const nextY = this.position.y + this.velocity.y * dt;
         if (this.checkCollision(this.position.x, nextY, this.position.z)) {
-            if(this.velocity.y < 0) {
+            if (this.velocity.y < 0) {
                 this.onGround = true;
                 this.position.y = Math.floor(this.position.y);
             }
@@ -138,7 +190,5 @@ export class Player {
         } else {
             this.position.y = nextY;
         }
-        
-        if(this.position.y < -10) { this.position.y = 40; this.velocity.y = 0; }
     }
 }

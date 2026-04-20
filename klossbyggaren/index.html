@@ -3,9 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Klossbyggaren</title>
     <link rel="stylesheet" href="style.css">
-    <!-- Importera Three.js och SimplexNoise via Import Maps -->
     <script type="importmap">
         {
             "imports": {
@@ -16,11 +18,17 @@
     </script>
 </head>
 <body>
+    <!-- Back to main menu button -->
+    <button id="back-btn" onclick="if(window.parent!==window){window.parent.postMessage('goBack','*');}else{window.location.href='../index.html';}">⬅️ Tillbaka</button>
+
     <div id="game-container"></div>
-    
+
     <!-- Crosshair -->
     <div id="crosshair"></div>
-    
+
+    <!-- Flying mode indicator (hidden by default) -->
+    <div id="fly-indicator">🕊️ FLYGLÄGE (X för att stänga av)</div>
+
     <!-- Touch UI -->
     <div id="touch-ui">
         <div id="joystick-zone"></div>
@@ -33,8 +41,8 @@
     </div>
 
     <!-- Minimap -->
-    <canvas id="minimap" width="150" height="150"></canvas>
-    
+    <canvas id="minimap" width="180" height="180"></canvas>
+
     <!-- Inventory UI -->
     <div id="inventory-ui">
         <div class="slot active" data-type="1">Gräs</div>
@@ -48,13 +56,19 @@
     <div id="menu">
         <h1>Klossbyggaren</h1>
         <p>Utforska världen och bygg det du vill!</p>
-        <button id="btn-start">Spela</button>
+        <div class="menu-buttons">
+            <button id="btn-start">Spela</button>
+            <button id="btn-save" class="menu-secondary">💾 Spara</button>
+            <button id="btn-new-map" class="menu-secondary">🆕 Ny karta</button>
+        </div>
         <p class="instructions hide-on-mobile">
-            W, A, S, D för att gå. Mellanslag hoppar.<br>
+            <b>W, A, S, D</b> för att gå. <b>Mellanslag</b> hoppar.<br>
+            <b>E</b> = Superhopp. <b>X</b> = Flygläge (hemlig!).<br>
             Klicka för att fånga musen.<br>
-            Vänsterklick: Bryt block<br>
-            Högerklick: Bygg block<br>
-            Siffror 1-5 för att välja block.
+            <b>Vänsterklick</b>: Bryt block • <b>Högerklick</b>: Bygg block<br>
+            <b>Siffror 1-9</b> för att välja block.<br>
+            <br>
+            <em>Ljusa vägar leder till äventyr!</em>
         </p>
     </div>
 
