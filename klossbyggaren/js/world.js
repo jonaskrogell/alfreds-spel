@@ -96,13 +96,46 @@ class Chunk {
         // Hus och Byar (Rare)
         const villageV = noise2D(this.chunkX * 0.05, this.chunkZ * 0.05);
         if (villageV > 0.75) {
-            // I en by, placera hus oftare
-            const numHouses = Math.floor(Math.random() * 2) + 1;
+            // I en by, placera hus oftaare på jämna ytor
+            const numHouses = Math.floor(Math.random() * 3) + 2;
             for(let i=0; i<numHouses; i++) {
-                const vx = 4 + Math.floor(Math.random() * 6);
-                const vz = 4 + Math.floor(Math.random() * 6);
+                const vx = 6 + Math.floor(Math.random() * 5);
+                const vz = 6 + Math.floor(Math.random() * 5);
                 const vy = this.getTopBlockY(vx, vz);
-                if (vy > WATER_LEVEL + 1) this.generateFineHouse(vx, vy + 1, vz);
+                // Bara bygg om på jämna ytor (dirt eller grass)
+                const surfaceBlock = this.getBlock(vx, vy-1, vz);
+                if (surfaceBlock === BLOCKS.DIRT || surfaceBlock === BLOCKS.GRASS) {
+                    this.generateFineHouse(vx, vy, vz);
+                }
+            }
+            // Bygrupper: skapa platser med flera hus och dekorationer
+            if (villageV > 0.85) {
+                const groupX = 30 + Math.floor(Math.random() * 40);
+                const groupZ = 30 + Math.floor(Math.random() * 40);
+                const groupHouses = 3 + Math.floor(Math.random() * 2);
+                for(let g=0; g<groupHouses; g++) {
+                    const hx = groupX + (g%2)*8;
+                    const hz = groupZ + Math.floor(g/2)*8;
+                    const hv = this.getTopBlockY(hx, hz);
+                    const surfaceBlock = this.getBlock(hx, hv-1, hz);
+                    if (surfaceBlock === BLOCKS.DIRT || surfaceBlock === BLOCKS.GRASS) {
+                        this.generateFineHouse(hx, hv, hz);
+                        // Lägg till blomsterdekorationer runt huset
+                        this.placeVillageDecorations(hx, hv, hz);
+                    }
+                }
+            }
+            
+            // Placera enskilda hus med dekorationer
+            if (villageV > 0.75 && numHouses <= 2) {
+                // Lägg till blomsterdekorationer runt enskilda hus
+                const houseX = 6 + Math.floor(Math.random() * 5);
+                const houseZ = 6 + Math.floor(Math.random() * 5);
+                const houseY = this.getTopBlockY(houseX, houseZ);
+                const surfaceBlock = this.getBlock(houseX, houseY-1, houseZ);
+                if (surfaceBlock === BLOCKS.DIRT || surfaceBlock === BLOCKS.GRASS) {
+                    this.placeVillageDecorations(houseX, houseY, houseZ);
+                }
             }
         }
     }

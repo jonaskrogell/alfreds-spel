@@ -53,11 +53,14 @@ function createTexture(type) {
             ctx.strokeRect(1,1,14,14);
             ctx.beginPath(); ctx.moveTo(4,4); ctx.lineTo(12,12); ctx.stroke();
             break;
-        case 'planks':
+case 'planks':
             fillArea('#BCAAA4', 0, 0, 16, 16);
             ctx.fillStyle = 'rgba(0,0,0,0.2)';
             ctx.fillRect(0, 7, 16, 1); ctx.fillRect(0, 15, 16, 1);
             ctx.fillRect(8, 0, 1, 7); ctx.fillRect(4, 8, 1, 7);
+            // Add decorative wood grain
+            ctx.fillStyle = 'rgba(139,119,72,0.3)';
+            for(let i=0;i<8;i++){ ctx.fillRect(2+i*2, 2, 1, 3+Math.floor(Math.random()*2)); }
             break;
         case 'cloud': fillArea('#FFFFFF', 0, 0, 16, 16, 0.05); break;
     }

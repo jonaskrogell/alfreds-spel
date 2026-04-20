@@ -63,7 +63,7 @@ export class InputManager {
                     window.dispatchEvent(new CustomEvent('block_select', { detail: parseInt(slots[idx].dataset.type) }));
                 }
             }
-            if(e.code === 'KeyK') {
+            if(e.code === 'KeyE') {
                 this.player.superJump();
             }
         });
