@@ -11,6 +11,7 @@ export class InputManager {
         this.keys = {};
         this.isLocked = false;
         this.isStarted = false;
+        this.isLooking = false;
 
         // Touch state
         this.isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
@@ -223,6 +224,9 @@ export class InputManager {
 
     update() {
         if (!this.isLocked && !this.isTouch) return;
+
+        // Track if mouse is actively moving (looking)
+        this.isLooking = this.isLocked || this.joystickActive;
 
         // Track jump button (space) for vertical input (swim/fly up)
         const jumpKey = this.keys['Space'];

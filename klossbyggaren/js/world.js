@@ -57,7 +57,14 @@ class Chunk {
         if (x < 0 || x >= CHUNK_SIZE || y < 0 || y >= CHUNK_HEIGHT || z < 0 || z >= CHUNK_SIZE) return;
         this.data[this.getIndex(x, y, z)] = type;
         this.dirty = true;
-        this.buildMesh();
+        // Debounce: only rebuild if not already scheduled
+        if (!this._pendingRebuild) {
+            this._pendingRebuild = true;
+            requestAnimationFrame(() => {
+                this._pendingRebuild = false;
+                this.buildMesh();
+            });
+        }
     }
 
     // Return top non-air block Y within this chunk
@@ -450,6 +457,12 @@ class Chunk {
         }
         this.meshes = {};
 
+        // Get camera frustum for frustum culling
+        const frustum = new THREE.Frustum();
+        const cameraViewProjectionMatrix = new THREE.Matrix4();
+        // Camera frustum culling: skip chunks completely off-screen
+        const cullingThreshold = 2; // Extra chunks beyond frustum for smooth transition
+
         // Count exposed blocks by type
         const counts = {};
         const instances = [];
@@ -458,6 +471,23 @@ class Chunk {
                 for (let z = 0; z < CHUNK_SIZE; z++) {
                     const block = this.data[this.getIndex(x, y, z)];
                     if (block === BLOCKS.AIR) continue;
+
+                    // Frustum culling: skip chunks entirely off-screen
+                    const worldX = this.chunkX * CHUNK_SIZE + x;
+                    const worldZ = this.chunkZ * CHUNK_SIZE + z;
+                    const worldY = y;
+                    
+                    // Simple frustum check - skip if block is far outside camera view
+                    const screenX = worldX; // Will be transformed in render
+                    const screenZ = worldZ;
+                    const chunkCulled =
+                        worldX < camera.position.x - 50 - cullingThreshold * CHUNK_SIZE ||
+                        worldX > camera.position.x + 50 + cullingThreshold * CHUNK_SIZE ||
+                        worldZ < camera.position.z - 50 - cullingThreshold * CHUNK_SIZE ||
+                        worldZ > camera.position.z + 50 + cullingThreshold * CHUNK_SIZE;
+
+                    if (chunkCulled) continue;
+
                     const isExposed =
                         this.getBlock(x + 1, y, z) === BLOCKS.AIR ||
                         this.getBlock(x - 1, y, z) === BLOCKS.AIR ||

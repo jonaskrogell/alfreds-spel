@@ -178,10 +178,45 @@ export class Player {
             this.velocity.z = 0;
         }
 
-        // Y axis (with ground detection)
+        // Y axis (with ground detection + auto-step for 1-block height differences)
         this.onGround = false;
         const nextY = this.position.y + this.velocity.y * dt;
-        if (this.checkCollision(this.position.x, nextY, this.position.z)) {
+        
+        if (!this.isFlying && this.velocity.y <= 0) {
+            // Check for auto-step: if moving into a block 1 unit higher, step up automatically
+            const forward = new THREE.Vector3();
+            this.camera.getWorldDirection(forward);
+            forward.y = 0;
+            forward.normalize();
+            const curSpeed = this.inWater ? this.waterSpeed : this.speed;
+            const stepTestDist = 0.5;
+            const checkX = this.position.x + forward.x * stepTestDist;
+            const checkZ = this.position.z + forward.z * stepTestDist;
+            
+            const currentBlockY = Math.floor(this.position.y);
+            const blockAtFeet = this.world.getBlock(Math.floor(checkX), currentBlockY, Math.floor(checkZ));
+            const blockAhead = this.world.getBlock(Math.floor(checkX), currentBlockY + 1, Math.floor(checkZ));
+            
+            // If there's a solid block 1 unit ahead at head level, and nothing at feet level,
+            // automatically step up instead of requiring a jump
+            if (blockAhead !== BLOCKS.AIR && blockAhead !== BLOCKS.WATER && blockAhead !== BLOCKS.CLOUD &&
+                SOLID_BLOCKS.has(blockAhead) &&
+                blockAtFeet === BLOCKS.AIR &&
+                !this.checkCollision(checkX, currentBlockY + 1, checkZ) &&
+                !this.checkCollision(checkX, currentBlockY + 2, checkZ)) {
+                this.position.y = currentBlockY + 1;
+                this.onGround = true;
+                this.velocity.y = 0;
+            } else if (this.checkCollision(this.position.x, nextY, this.position.z)) {
+                if (this.velocity.y < 0) {
+                    this.onGround = true;
+                    this.position.y = Math.floor(this.position.y);
+                }
+                this.velocity.y = 0;
+            } else {
+                this.position.y = nextY;
+            }
+        } else if (this.checkCollision(this.position.x, nextY, this.position.z)) {
             if (this.velocity.y < 0) {
                 this.onGround = true;
                 this.position.y = Math.floor(this.position.y);

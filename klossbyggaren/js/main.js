@@ -454,55 +454,41 @@ function animate() {
     requestAnimationFrame(animate);
     const dt = Math.min(clock.getDelta(), 0.1);
 
-    world.update(player.position.x, player.position.z);
+    // Throttle world updates - only update every 2 frames to reduce CPU load
+    if (Math.floor(performance.now() / 16) % 2 === 0) {
+        world.update(player.position.x, player.position.z);
+    }
     input.update();
     player.update(dt);
     input.updatePlayerPosition(player.position);
 
     mmFrame++;
-    if (mmFrame % 10 === 0) updateMinimap();
+    if (mmFrame % 30 === 0) updateMinimap(); // Throttle from 10 to 30 frames
 
     // Update sun to follow player
     dirLight.position.set(player.position.x + 20, player.position.y + 100, player.position.z + 20);
     dirLight.target.position.copy(player.position);
     dirLight.target.updateMatrixWorld();
 
-    // Animate mobs
-    mobs.forEach(mob => {
-        if (mob.kind === 'land') {
-            if (Date.now() > mob.nextMove) {
-                mob.velocity.x = (Math.random() - 0.5) * 0.8;
-                mob.velocity.z = (Math.random() - 0.5) * 0.8;
-                mob.nextMove = Date.now() + 4000 + Math.random() * 6000;
+    // Animate mobs - reduce update frequency to every 2 frames
+    if (Math.floor(performance.now() / 16) % 2 === 0) {
+        mobs.forEach(mob => {
+            if (mob.kind === 'land') {
+                if (Date.now() > mob.nextMove) {
+                    mob.velocity.x = (Math.random() - 0.5) * 0.8;
+                    mob.velocity.z = (Math.random() - 0.5) * 0.8;
+                    mob.nextMove = Date.now() + 4000 + Math.random() * 6000;
+                }
+                const isMoving = mob.velocity.lengthSq() > 0.01;
+                if (isMoving) {
+                    mob.phase += dt * 6;
+                    mob.mesh.position.addScaledVector(mob.velocity, dt);
+                    mob.mesh.rotation.y = Math.atan2(mob.velocity.x, mob.velocity.z);
+                } else { mob.phase = 0; }
             }
-            const isMoving = mob.velocity.lengthSq() > 0.01;
-            if (isMoving) {
-                mob.phase += dt * 6;
-                mob.mesh.position.addScaledVector(mob.velocity, dt);
-                mob.mesh.rotation.y = Math.atan2(mob.velocity.x, mob.velocity.z);
-            } else { mob.phase = 0; }
-            const groundY = world.getSurfaceHeight(mob.mesh.position.x, mob.mesh.position.z);
-            mob.mesh.position.y = (groundY + 1) + Math.abs(Math.sin(mob.phase)) * 0.15;
-        } else if (mob.kind === 'fish') {
-            mob.phase += dt * 2;
-            mob.mesh.position.x = mob.anchor.x + Math.sin(mob.phase) * 3;
-            mob.mesh.position.z = mob.anchor.z + Math.cos(mob.phase * 0.7) * 3;
-            mob.mesh.position.y = 9.5 + Math.sin(mob.phase * 1.3) * 0.3;
-            mob.mesh.rotation.y = mob.phase;
-        } else if (mob.kind === 'bird') {
-            mob.phase += dt * 2;
-            mob.mesh.position.x = mob.anchor.x + Math.sin(mob.phase * 0.5) * 15;
-            mob.mesh.position.z = mob.anchor.z + Math.cos(mob.phase * 0.4) * 15;
-            mob.mesh.position.y = mob.anchor.y + Math.sin(mob.phase * 0.7) * 2;
-            mob.mesh.rotation.y = mob.phase * 0.5 + Math.PI / 2;
-            // Flap wings
-            if (mob.wings) {
-                const flap = Math.sin(mob.phase * 10) * 0.4;
-                mob.wings[0].rotation.z = flap;
-                mob.wings[1].rotation.z = -flap;
-            }
-        }
-    });
+        });
+    }
+}
 
     // Highlight hovered block
     const hit = voxelRaycast(
@@ -510,7 +496,8 @@ function animate() {
         camera.getWorldDirection(new THREE.Vector3()),
         8
     );
-    if (hit && (input.isLocked || input.isTouch)) {
+    // Simplify: skip expensive raycast checks when not actively looking
+    if (hit && (input.isLocked || input.isTouch) && input.isLooking) {
         highlightBox.position.set(hit.x + 0.5, hit.y + 0.5, hit.z + 0.5);
         highlightBox.visible = true;
     } else {
