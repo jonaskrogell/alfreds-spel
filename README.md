@@ -71,6 +71,18 @@ A cozy and colorful memory game designed specifically for younger children, reus
 *   **Goal:** Find all 8 pairs of cuddly plushies to win the game and see the confetti!
 *   **Tech Stack:** Vanilla JavaScript and HTML5 with CSS 3D Transforms and Web Audio API for soft sound effects.
 
+### 8. The Wishlist (Gosedjurens Önskelista) 🌟
+A fun and magical game to keep track of toys.
+
+### 9. Klossbyggaren (Block Builder) 🧱
+A procedural generation sandbox building game heavily inspired by Minecraft but adapted for a 5-year old. 
+
+![Klossbyggaren](screenshot_klossbyggaren.png)
+
+*   **Controls:** Use `W,A,S,D` to move and `Space` to jump. Click the screen to lock the mouse, `Left Click` to break a block, `Right Click` to place a block. On Touch devices, use the virtual left thumb joystick to move and tap the right buttons or drag the screen to look around.
+*   **Goal:** Build and explore in an infinite procedural 3D voxel world with no enemies or fall damage.
+*   **Tech Stack:** JavaScript and WebGL using Three.js using `InstancedMesh` logic for chunking and procedural 2D Canvas textures.
+
 ## How to Run
 
 Since these games use local assets (such as sound effects generated via Web Audio API or textures), they need to be served from a local web server to prevent cross-origin issues in modern web browsers.

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+    <title>Klossbyggaren</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Importera Three.js och SimplexNoise via Import Maps -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+    <div id="game-container"></div>
+    
+    <!-- Crosshair -->
+    <div id="crosshair"></div>
+    
+    <!-- Touch UI -->
+    <div id="touch-ui">
+        <div id="joystick-zone"></div>
+        <div id="action-buttons">
+            <button id="btn-jump">Hoppa</button>
+            <button id="btn-place">Bygg</button>
+            <button id="btn-break">Bryt</button>
+        </div>
+    </div>
+    
+    <!-- Inventory UI -->
+    <div id="inventory-ui">
+        <div class="slot active" data-type="1">Gräs</div>
+        <div class="slot" data-type="2">Jord</div>
+        <div class="slot" data-type="3">Sten</div>
+        <div class="slot" data-type="4">Trä</div>
+        <div class="slot" data-type="5">Löv</div>
+    </div>
+
+    <!-- Start / Pause Menu -->
+    <div id="menu">
+        <h1>Klossbyggaren</h1>
+        <p>Utforska världen och bygg det du vill!</p>
+        <button id="btn-start">Spela</button>
+        <p class="instructions hide-on-mobile">
+            W, A, S, D för att gå. Mellanslag hoppar.<br>
+            Klicka för att fånga musen.<br>
+            Vänsterklick: Bryt block<br>
+            Högerklick: Bygg block<br>
+            Siffror 1-5 för att välja block.
+        </p>
+    </div>
+
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>
