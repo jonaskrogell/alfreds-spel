@@ -37,11 +37,12 @@ class Chunk {
 
         const getBiomeInfo = (wx, wz) => {
             const v = noise2D(wx * 0.002, wz * 0.002);
-            if (v < -0.4) return { type: 'DESERT', base: 8, var: 4 };
-            if (v < -0.1) return { type: 'ISLANDS', base: 7, var: 8 };
-            if (v < 0.2) return { type: 'PLAINS', base: 12, var: 4 };
-            if (v < 0.5) return { type: 'FOREST', base: 11, var: 7 };
-            return { type: 'MOUNTAINS', base: 10, var: 30 };
+            if (v < -0.35) return { type: 'DESERT', base: 6, var: 3 };
+            if (v < -0.1) return { type: 'ISLANDS', base: 7, var: 6 };
+            if (v < 0.25) return { type: 'PLAINS', base: 10, var: 3 };
+            if (v < 0.5) return { type: 'FOREST', base: 10, var: 5 };
+            if (v < 0.8) return { type: 'HILLS', base: 11, var: 8 };
+            return { type: 'MOUNTAINS', base: 12, var: 12 };
         };
 
         for (let x = 0; x < CHUNK_SIZE; x++) {
@@ -60,7 +61,7 @@ class Chunk {
 
                 for (let y = 0; y < CHUNK_HEIGHT; y++) {
                     const idx = this.getIndex(x, y, z);
-                    const isCave = y < height - 2 && noise3D(worldX * 0.08, y * 0.08, worldZ * 0.08) > 0.45;
+                    const isCave = y < height - 3 && noise3D(worldX * 0.08, y * 0.08, worldZ * 0.08) > 0.55;
                     if (isCave) { this.data[idx] = BLOCKS.AIR; }
                     else if (y <= height) {
                         let type = BLOCKS.STONE;
@@ -206,7 +207,87 @@ class Chunk {
                 }
             }
         }
-    }
+        
+        // Skapa en glasmur runt den första byn
+        this.createGlassGarden = function(centerX, centerZ) {
+            const gardenSize = 15;
+            const startX = centerX - gardenSize;
+            const startZ = centerZ - gardenSize;
+            
+            for (let x = startX; x < startX + gardenSize * 2; x++) {
+                for (let z = startZ; z < startZ + gardenSize * 2; z++) {
+                    // Placera glas i en ring
+                    const distFromCenter = Math.sqrt((x-centerX)**2 + (z-centerZ)**2);
+                    if (distFromCenter > gardenSize * 0.8 && distFromCenter < gardenSize) {
+                        const y = this.getTopBlockY(x, z) + 1;
+                        if (y < CHUNK_HEIGHT - 2) {
+                            this.data[this.getIndex(x, y, z)] = BLOCKS.GLASS;
+                        }
+                    }
+                }
+            }
+        };
+        
+        // Skapa vägar mellan husen
+        this.createPathsBetweenHouses = function(houses) {
+            if (houses.length < 2) return;
+            
+            for(let i = 0; i < houses.length - 1; i++) {
+                const h1 = houses[i];
+                const h2 = houses[i + 1];
+                
+                // Skapa en enkel väg mellan husen
+                const steps = 20;
+                for(let s = 0; s <= steps; s++) {
+                    const t = s / steps;
+                    const x = Math.floor(h1.x + (h2.x - h1.x) * t);
+                    const z = Math.floor(h1.z + (h2.z - h1.z) * t);
+                    
+                    // Ta bort block på vägen (förutom byggnader)
+                    for(let y = this.getTopBlockY(x, z) - 1; y > 0; y--) {
+                        const block = this.getBlock(x, y, z);
+                        if (block === BLOCKS.DIRT || block === BLOCKS.STONE) {
+                            this.data[this.getIndex(x, y, z)] = BLOCKS.GRASS;
+                        }
+                    }
+                }
+            }
+        };
+        
+        // Skapa en bystor med blommor och dekorationer
+        this.createVillageSquare = function(houses) {
+            if (houses.length === 0) return;
+            
+            // Hitta centrum för alla hus
+            let centerX = 0, centerZ = 0;
+            for(const h of houses) { centerX += h.x; centerZ += h.z; }
+            centerX /= houses.length;
+            centerZ /= houses.length;
+            
+            const squareSize = 12;
+            const startX = Math.floor(centerX - squareSize/2);
+            const startZ = Math.floor(centerZ - squareSize/2);
+            
+            // Skapa blomsterdekorationer
+            const flowers = ['GRASS', 'DIRT', 'STONE'];
+            const flowerSymbols = { GRASS: '🌼', DIRT: '🌻', STONE: '🌸' };
+            
+            for (let x = startX; x < startX + squareSize; x++) {
+                for (let z = startZ; z < startZ + squareSize; z++) {
+                    const distFromCenter = Math.sqrt((x-centerX)**2 + (z-centerZ)**2);
+                    if (distFromCenter < squareSize * 0.4) {
+                        const y = this.getTopBlockY(x, z);
+                        if (y < CHUNK_HEIGHT - 1) {
+                            // Placera blommor i mönster
+                            if (Math.random() < 0.3) {
+                                const flowerType = flowers[Math.floor(Math.random() * flowers.length)];
+                                this.data[this.getIndex(x, y + 1, z)] = BLOCKS[flowerType];
+                            }
+                        }
+                    }
+                }
+            }
+        };
     
     buildMesh() {
         for (const type in this.meshes) { this.scene.remove(this.meshes[type]); if (this.meshes[type].geometry) this.meshes[type].geometry.dispose(); }
