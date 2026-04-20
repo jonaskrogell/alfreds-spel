@@ -357,24 +357,13 @@ class Chunk {
                 }
             }
         }
+        
         if (placeNS) {
             for (let z = 0; z < CHUNK_SIZE; z++) {
                 const deviation = Math.sin(z * curveFactor * CHUNK_SIZE) * 3;
                 const xBase = Math.floor(centerX + deviation);
                 for (let dw = -halfWidth; dw <= halfWidth; dw++) {
                     const x = xBase + dw;
-                    if (x < 0 || x >= CHUNK_SIZE) continue;
-                    this.paintHighway(x, z);
-                }
-            }
-        }
-    }
-            }
-        }
-        if (placeNS) {
-            for (let z = 0; z < CHUNK_SIZE; z++) {
-                for (let dw = -halfWidth; dw <= halfWidth; dw++) {
-                    const x = highwayX + dw;
                     if (x < 0 || x >= CHUNK_SIZE) continue;
                     this.paintHighway(x, z);
                 }

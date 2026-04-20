@@ -48,7 +48,7 @@ export class Player {
             for (let by = minY; by <= maxY; by++) {
                 for (let bz = minZ; bz <= maxZ; bz++) {
                     const block = this.world.getBlock(bx, by, bz);
-                    if (SOLID_BLOCKS.has(block) || block === BLOCKS.WOOD) {
+                    if (SOLID_BLOCKS.has(block)) {
                         return true;
                     }
                 }
