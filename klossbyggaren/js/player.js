@@ -2,9 +2,10 @@ import * as THREE from 'three';
 import { BLOCKS } from './textures.js';
 
 export class Player {
-    constructor(camera, world) {
+    constructor(camera, world, audio) {
         this.camera = camera;
         this.world = world;
+        this.audio = audio;
         
         this.position = new THREE.Vector3(16, 30, 16);
         this.velocity = new THREE.Vector3(0, 0, 0);
@@ -14,6 +15,7 @@ export class Player {
         
         this.onGround = false;
         this.inWater = false;
+        this.wasInWater = false;
         
         this.speed = 5.0;
         this.waterSpeed = 2.5;
@@ -21,6 +23,7 @@ export class Player {
         this.gravity = 22.0;
         
         this.input = new THREE.Vector3();
+        this.stepTimer = 0;
     }
     
     checkCollision(x, y, z) {
@@ -36,7 +39,6 @@ export class Player {
             for (let by = minY; by <= maxY; by++) {
                 for (let bz = minZ; bz <= maxZ; bz++) {
                     const block = this.world.getBlock(bx, by, bz);
-                    // Endast fasta block ger kollision
                     if (block !== BLOCKS.AIR && block !== BLOCKS.WATER && block !== BLOCKS.CLOUD) {
                         return true;
                     }
@@ -50,6 +52,7 @@ export class Player {
         if (this.onGround || this.inWater) {
             this.velocity.y = this.inWater ? this.jumpForce * 0.5 : this.jumpForce;
             this.onGround = false;
+            if (this.audio) this.audio.playJump();
         }
     }
     
@@ -57,12 +60,16 @@ export class Player {
         // Kontrollera om vi är i vatten
         const footBlock = this.world.getBlock(this.position.x, this.position.y + 0.5, this.position.z);
         this.inWater = (footBlock === BLOCKS.WATER);
+        
+        if (this.inWater && !this.wasInWater) {
+            if (this.audio) this.audio.playSplash();
+        }
+        this.wasInWater = this.inWater;
 
-        // Gravitation (lägre i vatten)
+        // Gravitation
         const currentGravity = this.inWater ? this.gravity * 0.3 : this.gravity;
         this.velocity.y -= currentGravity * dt;
         
-        // Terminal velocity i vatten
         if (this.inWater && this.velocity.y < -3) this.velocity.y = -3;
         
         const forward = new THREE.Vector3();
@@ -76,20 +83,30 @@ export class Player {
         const currentSpeed = this.inWater ? this.waterSpeed : this.speed;
         const moveX = forward.x * (-this.input.z) + right.x * this.input.x;
         const moveZ = forward.z * (-this.input.z) + right.z * this.input.x;
-        const desiredX = moveX * currentSpeed;
-        const desiredZ = moveZ * currentSpeed;
+        
+        const velocityX = moveX * currentSpeed;
+        const velocityZ = moveZ * currentSpeed;
+        
+        // Fotstegs-ljud
+        if (this.onGround && (velocityX !== 0 || velocityZ !== 0)) {
+            this.stepTimer += dt;
+            if (this.stepTimer > 0.35) {
+                if (this.audio) this.audio.playPlace(); // Återanvänd place-ljud för steg (liknande)
+                this.stepTimer = 0;
+            }
+        }
         
         // Rörelse X
-        if(desiredX !== 0) {
-            const nextX = this.position.x + desiredX * dt;
+        if(velocityX !== 0) {
+            const nextX = this.position.x + velocityX * dt;
             if (!this.checkCollision(nextX, this.position.y, this.position.z)) {
                 this.position.x = nextX;
             }
         }
         
         // Rörelse Z
-        if(desiredZ !== 0) {
-            const nextZ = this.position.z + desiredZ * dt;
+        if(velocityZ !== 0) {
+            const nextZ = this.position.z + velocityZ * dt;
             if (!this.checkCollision(this.position.x, this.position.y, nextZ)) {
                 this.position.z = nextZ;
             }
@@ -99,6 +116,9 @@ export class Player {
         this.onGround = false;
         const nextY = this.position.y + this.velocity.y * dt;
         if (this.checkCollision(this.position.x, nextY, this.position.z)) {
+            if(this.velocity.y < -12 && !this.inWater) {
+                // Landnings-ljud vid höga fall? (Valfritt)
+            }
             if(this.velocity.y < 0) {
                 this.onGround = true;
                 this.position.y = Math.floor(this.position.y);

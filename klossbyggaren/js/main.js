@@ -3,12 +3,16 @@ import { World } from './world.js';
 import { Player } from './player.js';
 import { InputManager } from './input.js';
 import { BLOCKS } from './textures.js';
+import { AudioManager } from './audio.js';
+
+// Setup Audio
+const audio = new AudioManager();
 
 // Setup Three.js
 const container = document.getElementById('game-container');
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x87CEEB); // Himmel
-scene.fog = new THREE.Fog(0x87CEEB, 30, 80); // Mjuk dimma
+scene.background = new THREE.Color(0x87CEEB);
+scene.fog = new THREE.Fog(0x87CEEB, 30, 80);
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: false });
@@ -18,7 +22,6 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 container.appendChild(renderer.domElement);
 
-// Ljus
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
 scene.add(ambientLight);
 
@@ -33,46 +36,33 @@ dirLight.shadow.mapSize.width = 1024;
 dirLight.shadow.mapSize.height = 1024;
 scene.add(dirLight);
 
-// Skapa Värld och Spelare
+// Värld och Spelare
 const world = new World(scene);
-const player = new Player(camera, world);
+const player = new Player(camera, world, audio);
 const input = new InputManager(camera, renderer.domElement, player);
 input.addToScene(scene);
 
-// Highlight för blocket man tittar på
 const highlightGeo = new THREE.BoxGeometry(1.02, 1.02, 1.02);
 const highlightMat = new THREE.MeshBasicMaterial({ color: 0x000000, wireframe: true, transparent: true, opacity: 0.4 });
 const highlightBox = new THREE.Mesh(highlightGeo, highlightMat);
 scene.add(highlightBox);
 
-// Mobs (Snälla djur)
 const mobs = [];
 function createMob(x, y, z) {
     const group = new THREE.Group();
     const body = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.6, 1.2), new THREE.MeshLambertMaterial({ color: Math.random() > 0.5 ? 0xffffff : 0x795548 }));
-    body.position.y = 0.3;
-    body.castShadow = true;
+    body.position.y = 0.3; body.castShadow = true;
     group.add(body);
-    
     const head = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), body.material);
     head.position.set(0, 0.6, 0.7);
     group.add(head);
-    
     group.position.set(x, y, z);
     scene.add(group);
-    
-    mobs.push({
-        mesh: group,
-        velocity: new THREE.Vector3(),
-        nextMove: 0,
-        phase: Math.random() * Math.PI * 2
-    });
+    mobs.push({ mesh: group, velocity: new THREE.Vector3(), nextMove: 0, phase: Math.random()*Math.PI*2, nextSound: Date.now() + Math.random()*10000 });
 }
+for(let i=0; i<15; i++) createMob(Math.random()*60-30, 20, Math.random()*60-30);
 
-// Skapa några start-djur
-for(let i=0; i<10; i++) createMob(Math.random()*30-15, 20, Math.random()*30-15);
-
-// Inventory System
+// Inventory
 let currentBlockType = BLOCKS.GRASS;
 const blockChoices = [BLOCKS.GRASS, BLOCKS.DIRT, BLOCKS.STONE, BLOCKS.WOOD, BLOCKS.PLANKS];
 document.querySelectorAll('.slot').forEach((slot, i) => {
@@ -85,7 +75,11 @@ document.querySelectorAll('.slot').forEach((slot, i) => {
 });
 window.addEventListener('block_select', (e) => { currentBlockType = e.detail; });
 
-// Voxel Raycast (DDA)
+// Starta ljud på interaktion
+document.getElementById('btn-start').addEventListener('click', () => {
+    audio.init();
+});
+
 function voxelRaycast(origin, direction, maxDist) {
     const dx = direction.x, dy = direction.y, dz = direction.z;
     let x = Math.floor(origin.x), y = Math.floor(origin.y), z = Math.floor(origin.z);
@@ -94,9 +88,7 @@ function voxelRaycast(origin, direction, maxDist) {
     let tMaxX = dx > 0 ? (x + 1 - origin.x) * tDeltaX : (origin.x - x) * tDeltaX;
     let tMaxY = dy > 0 ? (y + 1 - origin.y) * tDeltaY : (origin.y - y) * tDeltaY;
     let tMaxZ = dz > 0 ? (z + 1 - origin.z) * tDeltaZ : (origin.z - z) * tDeltaZ;
-    
-    let prevX = x, prevY = y, prevZ = z;
-    let dist = 0;
+    let prevX = x, prevY = y, prevZ = z; let dist = 0;
     while (dist < maxDist) {
         const block = world.getBlock(x, y, z);
         if (block !== BLOCKS.AIR && block !== BLOCKS.WATER && block !== BLOCKS.CLOUD) {
@@ -120,10 +112,12 @@ function handleInteract(action) {
     if(hit) {
         if (action === 'break') {
             world.setBlock(hit.x, hit.y, hit.z, BLOCKS.AIR);
+            audio.playBreak();
         } else if (action === 'build') {
             const px = Math.floor(player.position.x), py = Math.floor(player.position.y), pz = Math.floor(player.position.z);
             if(!(hit.prevX === px && hit.prevZ === pz && (hit.prevY === py || hit.prevY === py + 1))) {
                 world.setBlock(hit.prevX, hit.prevY, hit.prevZ, currentBlockType);
+                audio.playPlace();
             }
         }
     }
@@ -158,25 +152,22 @@ function animate() {
     dirLight.target.position.copy(player.position);
     dirLight.target.updateMatrixWorld();
     
-    // Update Mobs
     mobs.forEach(mob => {
         if (Date.now() > mob.nextMove) {
             mob.velocity.x = (Math.random() - 0.5) * 1.5;
             mob.velocity.z = (Math.random() - 0.5) * 1.5;
             mob.nextMove = Date.now() + 2000 + Math.random() * 3000;
         }
-        
-        // Gå-animation (hoppa lite)
+        if (Date.now() > mob.nextSound) {
+            audio.playAnimal();
+            mob.nextSound = Date.now() + 5000 + Math.random() * 15000;
+        }
         const isMoving = mob.velocity.lengthSq() > 0.01;
         if (isMoving) {
             mob.phase += dt * 10;
             mob.mesh.position.addScaledVector(mob.velocity, dt);
             mob.mesh.rotation.y = Math.atan2(mob.velocity.x, mob.velocity.z);
-        } else {
-            mob.phase = 0;
-        }
-        
-        // Hitta marken
+        } else { mob.phase = 0; }
         const groundY = world.getSurfaceHeight(mob.mesh.position.x, mob.mesh.position.z);
         mob.mesh.position.y = (groundY + 1) + Math.abs(Math.sin(mob.phase)) * 0.2;
     });
@@ -185,10 +176,7 @@ function animate() {
     if(hit && (input.isLocked || input.isTouch)) {
         highlightBox.position.set(hit.x + 0.5, hit.y + 0.5, hit.z + 0.5);
         highlightBox.visible = true;
-    } else {
-        highlightBox.visible = false;
-    }
-    
+    } else { highlightBox.visible = false; }
     renderer.render(scene, camera);
 }
 
