@@ -42,7 +42,7 @@ A vertical platform-jumping game with a 16-bit aesthetic where you bounce higher
 
 *   **Controls:** Use `Left`/`Right` arrow keys or touch the sides of the screen to steer left and right. Bounce on leaves, clouds, and bouncepads to go higher!
 *   **Goal:** Reach the sun at the top to win. Collect fruits to grow bigger and find invincibility stars. Beware of falling!
-*   **Tech Stack:** Vanilla JavaScript and HTML5 Canvas (2D) with infinite level generation and layered backgrounds.
+*   **Tech Stack:** JavaScript (Phaser framework) with HTML5 Canvas (2D) featuring infinite procedural level generation and layered parallax backgrounds.
 
 ### 5. Super Rally (Super Rally) 🚗
 A top-down procedurally generated racing game where cars auto-accelerate and players simply steer through chicanes and AI traffic.
@@ -72,7 +72,11 @@ A cozy and colorful memory game designed specifically for younger children, reus
 *   **Tech Stack:** Vanilla JavaScript and HTML5 with CSS 3D Transforms and Web Audio API for soft sound effects.
 
 ### 8. The Wishlist (Gosedjurens Önskelista) 🌟
-A fun and magical game to keep track of toys.
+A fun and magical game to keep track of toys in the playroom. Click or tap on the toy box to discover hidden objects and fulfill the wishes of the gosedjur! 
+
+*   **Controls:** Click or tap on the toy box.
+*   **Goal:** Discover all hidden objects to fulfill every wish.
+*   **Tech Stack:** JavaScript with Canvas, Web Audio API, and external libraries like canvas-confetti and Matter.js for physics and effects.
 
 ### 9. Klossbyggaren (Block Builder) 🧱
 A procedural generation sandbox building game heavily inspired by Minecraft but adapted for a 5-year old. 

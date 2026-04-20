@@ -1,315 +1,350 @@
 /* ============================================
-   Stjärnjakten – Style
+   Gosedjurens Önskelista — Styles
    ============================================ */
 
-* {
-    box-sizing: border-box;
-    user-select: none;
-    -webkit-user-drag: none;
-    -webkit-tap-highlight-color: transparent;
-}
-
-body, html {
-    margin: 0;
-    padding: 0;
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-    background: #1a1a2e;
-    font-family: 'Nunito', sans-serif;
-}
+/* ---- Reset ---- */
+* { box-sizing: border-box; user-select: none; -webkit-user-drag: none; -webkit-tap-highlight-color: transparent; }
+body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #1a1a2e; font-family: 'Nunito', sans-serif; }
 
 /* ---- Game Container ---- */
-#game-container {
-    position: relative;
-    width: 100vw;
-    height: 100vh;
-    overflow: hidden;
+#game { position: relative; width: 100vw; height: 100vh; overflow: hidden; touch-action: none; background: #0a0a1a; }
+
+/* ---- Pannable Scene ---- */
+#scene {
+    position: absolute; width: 2000px; height: 2000px; transform-origin: 0 0;
+    will-change: transform; transition: filter 1.2s ease;
+    z-index: 10;
 }
 
 /* ---- Background ---- */
-#bg-img {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    z-index: 0;
-    transition: filter 1s ease;
-}
+#bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; z-index: 0; pointer-events: none; }
+body.night #scene { filter: brightness(0.9) saturate(0.9); }
 
-body.night-mode #bg-img {
-    filter: brightness(0.25) saturate(0.6);
-}
-
-/* ---- Night overlay ---- */
+/* ---- Night Overlay ---- */
 #night-overlay {
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(ellipse at 30% 80%, rgba(255,180,50,0.12) 0%, transparent 50%),
-                linear-gradient(to top, rgba(10,10,40,0) 0%, rgba(10,10,40,0) 100%);
-    z-index: 1;
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity 1s ease;
+    position: absolute; inset: 0; z-index: 110; pointer-events: none; opacity: 0; transition: opacity 1.2s ease;
+    background: radial-gradient(ellipse at 1000px 250px, rgba(255,255,255,0.05) 0%, transparent 45%),
+                linear-gradient(to top, rgba(10,10,40,0.2) 0%, rgba(10,10,40,0.3) 100%);
+}
+body.night #night-overlay { opacity: 1; }
+
+/* ---- Sun/Moon Interactive ---- */
+#sun-moon {
+    position: absolute; left: 1000px; top: 250px; width: 120px; height: 120px;
+    z-index: 100; cursor: pointer; border-radius: 50%;
+    transform: translate(-50%, -50%);
+    background: #ffcc00;
+    box-shadow: 0 0 60px 20px rgba(255, 200, 0, 0.9);
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+#sun-moon::after {
+    content: '☀️'; font-size: 70px; display: block;
+}
+#sun-moon:hover { transform: translate(-50%, -50%) scale(1.1); }
+#sun-moon:active { transform: translate(-50%, -50%) scale(0.9); }
+
+body.night #sun-moon {
+    background: #e0e0e0;
+    box-shadow: 0 0 60px 20px rgba(200, 200, 255, 0.6);
+}
+body.night #sun-moon::after {
+    content: '🌙'; filter: drop-shadow(0 0 15px rgba(200,200,255,0.6));
 }
 
-body.night-mode #night-overlay {
-    opacity: 1;
-    background: radial-gradient(ellipse at 30% 80%, rgba(255,180,50,0.15) 0%, transparent 40%),
-                linear-gradient(to top, rgba(10,10,40,0.5) 0%, rgba(10,10,40,0.7) 100%);
+/* ---- Zones Layer ---- */
+#zones-layer { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+
+.zone {
+    position: absolute; border: 3px dashed transparent; border-radius: 18px;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.4s ease; opacity: 0; pointer-events: none;
+}
+.zone span {
+    background: rgba(255,255,255,0.85); padding: 6px 14px; border-radius: 12px;
+    font-size: clamp(14px, 2.5vw, 20px); font-weight: 900; color: #555;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1); pointer-events: none;
+}
+.zone.active {
+    opacity: 1; border-color: rgba(255, 215, 0, 0.7);
+    background: rgba(255, 215, 0, 0.08);
+    box-shadow: inset 0 0 30px rgba(255, 215, 0, 0.1), 0 0 15px rgba(255, 215, 0, 0.15);
+    animation: zone-pulse 1.5s infinite ease-in-out;
+}
+@keyframes zone-pulse {
+    0%, 100% { box-shadow: inset 0 0 30px rgba(255,215,0,0.1), 0 0 15px rgba(255,215,0,0.15); }
+    50% { box-shadow: inset 0 0 40px rgba(255,215,0,0.2), 0 0 25px rgba(255,215,0,0.25); }
 }
 
-/* ---- Game Canvas (stars + toys) ---- */
-#game-canvas {
-    position: absolute;
-    inset: 0;
-    z-index: 10;
-    pointer-events: none; /* children receive events individually */
+/* Zone positions (approximate to 2000x2000) */
+#zone-window   { left: 32.5%; top: 57.5%; width: 35%; height: 6.5%; }
+#zone-armchair { left: 2.5%;  top: 67.5%; width: 35%; height: 10%; }
+#zone-behind   { left: 0;     top: 45%;   width: 10%; height: 25%; }
+
+/* ---- Canvas (toys & items) ---- */
+#canvas { position: absolute; inset: 0; z-index: 40; pointer-events: none; }
+
+/* ---- Decorative Toy Box ---- */
+#toybox-deco {
+    position: absolute; left: 1400px; top: 1200px; /* adjusted to 2000x2000 mapping */
+    width: 500px; height: auto;
+    z-index: 35; pointer-events: auto; cursor: pointer;
+    filter: drop-shadow(0 8px 12px rgba(0,0,0,0.3));
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), filter 0.2s;
 }
+#toybox-deco:hover { transform: scale(1.05); filter: drop-shadow(0 12px 20px rgba(0,0,0,0.4)) brightness(1.1); }
+#toybox-deco:active { transform: scale(0.95); }
+.toybox-bump { animation: box-bump 0.4s ease; }
+@keyframes box-bump { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.15) rotate(-3deg); } }
+body.night #toybox-deco { filter: brightness(0.6) drop-shadow(0 8px 12px rgba(0,0,0,0.5)); }
 
 /* ---- Vignette ---- */
 #vignette {
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.35) 100%);
-    z-index: 20;
-    pointer-events: none;
-    transition: background 1s ease;
+    position: absolute; inset: 0; z-index: 20; pointer-events: none;
+    background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.3) 100%);
+    transition: background 1s;
 }
-
-body.night-mode #vignette {
-    background: radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.7) 100%);
-}
+body.night #vignette { background: radial-gradient(ellipse at center, transparent 25%, rgba(0,0,0,0.65) 100%); }
 
 /* ============================================
-   Stars
+   Toy Wraps
    ============================================ */
-.star {
-    position: absolute;
-    width: clamp(50px, 10vw, 90px);
-    height: auto;
-    pointer-events: auto;
-    cursor: pointer;
-    z-index: 11;
-    transition: transform 0.5s ease, opacity 0.5s ease;
-    animation: star-glow 2s infinite ease-in-out;
-    /* Use the star_pillow image */
+.toy-wrap {
+    position: absolute; left: 0; top: 0; pointer-events: auto; cursor: grab; z-index: 30;
+    transition: filter 0.2s;
 }
+.toy-wrap.dragging { cursor: grabbing; z-index: 100; }
+.toy-wrap.satisfied { cursor: grab; }
 
-.star img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
+.toy-img {
+    width: 250px; height: auto; display: block;
+    filter: drop-shadow(0 12px 18px rgba(0,0,0,0.35));
+    transition: filter 0.2s;
     pointer-events: none;
 }
+.toy-wrap.dragging .toy-img { filter: drop-shadow(0 25px 35px rgba(0,0,0,0.5)); }
+body.night .toy-img { filter: brightness(0.6) drop-shadow(0 12px 18px rgba(0,0,0,0.5)); }
 
-.star.collected {
-    transform: scale(1.8) translateY(-60px) rotate(20deg);
-    opacity: 0;
-    pointer-events: none;
-    animation: none;
+/* Ball item */
+.item-wrap {
+    position: absolute; left: 0; top: 0; pointer-events: auto; cursor: grab; z-index: 29;
 }
-
-@keyframes star-glow {
-    0%, 100% {
-        transform: scale(1) rotate(0deg);
-        filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.6));
-    }
-    50% {
-        transform: scale(1.1) rotate(5deg);
-        filter: drop-shadow(0 0 20px rgba(255, 215, 0, 1));
-    }
-}
-
-body.night-mode .star {
-    filter: drop-shadow(0 0 25px rgba(255, 215, 0, 1)) brightness(1.2);
-}
-
-/* ============================================
-   Toys
-   ============================================ */
-.toy {
-    position: absolute;
-    cursor: grab;
-    pointer-events: auto;
-    width: clamp(90px, 14vw, 180px);
-    height: auto;
-    filter: drop-shadow(0 8px 12px rgba(0,0,0,0.4));
-    z-index: 12;
-    /* No CSS transition on transform — JS handles it via rAF for physics */
-}
-
-.toy.dragging {
-    cursor: grabbing;
-    filter: drop-shadow(0 20px 25px rgba(0,0,0,0.5));
-    z-index: 100;
-}
-
-body.night-mode .toy {
-    filter: brightness(0.5) drop-shadow(0 8px 12px rgba(0,0,0,0.7));
-}
-
-body.night-mode .toy.dragging {
-    filter: brightness(0.65) drop-shadow(0 20px 25px rgba(0,0,0,0.8));
-}
-
-/* ============================================
-   Toy Box
-   ============================================ */
-#toy-box {
-    position: absolute;
-    bottom: 4%;
-    right: 5%;
-    width: clamp(100px, 16vw, 220px);
-    height: auto;
-    z-index: 15;
-    cursor: pointer;
-    filter: drop-shadow(0 10px 18px rgba(0,0,0,0.4));
-    transition: transform 0.15s ease;
-}
-
-#toy-box:hover {
-    transform: scale(1.03);
-}
-
-#toy-box:active {
-    transform: scale(0.92) translateY(5px);
-}
-
-body.night-mode #toy-box {
-    filter: brightness(0.5) drop-shadow(0 10px 18px rgba(0,0,0,0.7));
-}
-
-/* ============================================
-   UI Layer
-   ============================================ */
-#ui-layer {
-    position: absolute;
-    top: 15px;
-    left: 15px;
-    right: 15px;
-    z-index: 50;
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
+.item-wrap.dragging { cursor: grabbing; z-index: 99; }
+.item-img {
+    width: 150px; height: auto; display: block;
+    filter: drop-shadow(0 8px 15px rgba(0,0,0,0.3));
     pointer-events: none;
 }
 
-.score-board {
-    pointer-events: auto;
-    background: rgba(255, 255, 255, 0.92);
-    backdrop-filter: blur(8px);
-    padding: 10px 24px;
-    border-radius: 30px;
-    font-size: clamp(20px, 4vw, 28px);
-    color: #333;
-    font-weight: 900;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-    border: 2px solid rgba(255,255,255,0.8);
+/* ============================================
+   Thought Bubbles
+   ============================================ */
+.bubble {
+    position: absolute; bottom: calc(100% + 10px); left: 50%;
+    transform: translateX(-50%) scale(0);
+    background: #fff; border-radius: 20px; padding: 8px 16px;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.12);
+    display: flex; align-items: center; gap: 8px;
+    white-space: nowrap; pointer-events: auto; cursor: pointer; z-index: 15;
+    animation: bubble-in 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
-
-body.night-mode .score-board {
-    background: rgba(30, 30, 50, 0.85);
-    color: #f0e6d3;
-    border-color: rgba(255,255,255,0.15);
+.bubble::after {
+    content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+    border: 10px solid transparent; border-top-color: #fff;
 }
+.bubble-icon { font-size: clamp(22px, 4vw, 32px); line-height: 1; }
+.bubble-label { font-size: clamp(12px, 2vw, 16px); font-weight: 700; color: #555; }
 
-#night-switch {
-    pointer-events: auto;
-    background: rgba(255, 255, 255, 0.92);
-    backdrop-filter: blur(8px);
-    border: 2px solid rgba(255,255,255,0.8);
-    border-radius: 50%;
-    width: 52px;
-    height: 52px;
-    font-size: 26px;
-    cursor: pointer;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-    transition: transform 0.2s, background 0.5s, border-color 0.5s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    line-height: 1;
+@keyframes bubble-in {
+    0% { transform: translateX(-50%) scale(0) translateY(10px); opacity: 0; }
+    100% { transform: translateX(-50%) scale(1) translateY(0); opacity: 1; }
 }
-
-#night-switch:hover {
-    transform: scale(1.1);
+@keyframes bubble-pop {
+    0% { transform: translateX(-50%) scale(1); opacity: 1; }
+    50% { transform: translateX(-50%) scale(1.3); opacity: 0.5; }
+    100% { transform: translateX(-50%) scale(0); opacity: 0; }
 }
+.bubble.popping { animation: bubble-pop 0.4s ease forwards; }
 
-#night-switch:active {
-    transform: scale(0.9);
-}
+body.night .bubble { background: #2a2a45; box-shadow: 0 4px 18px rgba(0,0,0,0.3); }
+body.night .bubble::after { border-top-color: #2a2a45; }
+body.night .bubble-label { color: #ccc; }
 
-body.night-mode #night-switch {
-    background: rgba(30, 30, 50, 0.85);
-    border-color: rgba(255,255,255,0.15);
+/* ============================================
+   Satisfied Badge
+   ============================================ */
+.satisfied-star {
+    position: absolute; top: -5px; right: -5px; font-size: 24px;
+    animation: badge-pop 0.5s cubic-bezier(0.175,0.885,0.32,1.275);
+    pointer-events: none; z-index: 16;
 }
 
 /* ============================================
-   Victory Overlay
+   Hold Progress (bear hug)
    ============================================ */
-#victory-overlay {
-    position: absolute;
-    inset: 0;
-    z-index: 200;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background: rgba(0,0,0,0.4);
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.5s ease;
+.toy-wrap.holding .toy-img {
+    animation: hug-squeeze 0.4s infinite ease-in-out;
+    filter: drop-shadow(0 0 15px rgba(255,100,100,0.6));
+}
+.hold-ring {
+    position: absolute; top: -15px; left: -15px;
+    width: calc(100% + 30px); height: calc(100% + 30px);
+    pointer-events: none; z-index: 14;
+}
+.hold-ring circle {
+    fill: none; stroke: #ff6b6b; stroke-width: 4;
+    stroke-dasharray: 500; stroke-dashoffset: 500;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 2s linear;
+}
+.hold-ring.active circle { stroke-dashoffset: 0; }
+
+@keyframes hug-squeeze {
+    0%, 100% { transform: scale(1) rotate(0deg); }
+    25% { transform: scale(1.08) rotate(-4deg); }
+    75% { transform: scale(1.08) rotate(4deg); }
 }
 
-#victory-overlay.show {
-    opacity: 1;
-    pointer-events: auto;
+/* ============================================
+   Tap Counter (pig tickle)
+   ============================================ */
+.tap-counter {
+    position: absolute; top: -15px; right: -15px;
+    background: #ff6b6b; color: #fff; font-weight: 900;
+    width: 36px; height: 36px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; pointer-events: none; z-index: 16;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.2);
 }
 
-#victory-message {
-    background: linear-gradient(135deg, #FFD700, #FFA500);
-    color: #fff;
-    padding: 30px 50px;
-    border-radius: 24px;
-    text-align: center;
+/* ============================================
+   Floating Numbers & Particles
+   ============================================ */
+.float-text {
+    position: absolute; font-size: clamp(28px, 5vw, 42px); font-weight: 900;
+    pointer-events: none; z-index: 50;
+    animation: float-up 0.9s ease-out forwards;
+}
+@keyframes float-up {
+    0% { transform: translateY(0) scale(1); opacity: 1; }
+    100% { transform: translateY(-80px) scale(0.4); opacity: 0; }
+}
+
+.flying-star {
+    position: absolute; font-size: 32px; pointer-events: none; z-index: 200;
+    transition: all 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+/* ============================================
+   Celebration Animations (per animal)
+   ============================================ */
+@keyframes celebrate-bounce {
+    0%, 100% { transform: translateY(0); }
+    20% { transform: translateY(-30px); }
+    40% { transform: translateY(0); }
+    60% { transform: translateY(-15px); }
+    80% { transform: translateY(0); }
+}
+@keyframes celebrate-wiggle {
+    0%, 100% { transform: rotate(0); }
+    15% { transform: rotate(-15deg); }
+    30% { transform: rotate(15deg); }
+    45% { transform: rotate(-10deg); }
+    60% { transform: rotate(10deg); }
+    75% { transform: rotate(-5deg); }
+}
+@keyframes celebrate-spin {
+    0% { transform: rotate(0deg) scale(1); }
+    50% { transform: rotate(360deg) scale(1.1); }
+    100% { transform: rotate(720deg) scale(1); }
+}
+@keyframes celebrate-jump {
+    0% { transform: translateY(0) scale(1, 1); }
+    15% { transform: translateY(0) scale(1.1, 0.9); }
+    30% { transform: translateY(-120px) scale(0.9, 1.1); }
+    50% { transform: translateY(-150px) scale(1, 1); }
+    70% { transform: translateY(-120px) scale(0.9, 1.1); }
+    85% { transform: translateY(0) scale(1.1, 0.9); }
+    100% { transform: translateY(0) scale(1, 1); }
+}
+@keyframes celebrate-sleep {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.03); }
+}
+@keyframes celebrate-howl {
+    0% { transform: rotate(0) scale(1); }
+    30% { transform: rotate(-15deg) scale(1.1); }
+    60% { transform: rotate(-15deg) scale(1.1); }
+    100% { transform: rotate(0) scale(1); }
+}
+@keyframes celebrate-peek {
+    0% { transform: translateX(0); opacity: 1; }
+    40% { transform: translateX(-40px); opacity: 0.6; }
+    60% { transform: translateX(-30px); opacity: 0.8; }
+    100% { transform: translateX(-20px); opacity: 0.9; }
+}
+@keyframes badge-pop {
+    0% { transform: scale(0); }
+    60% { transform: scale(1.3); }
+    100% { transform: scale(1); }
+}
+
+.celebrate-bounce .toy-img  { animation: celebrate-bounce 1s ease; }
+.celebrate-wiggle .toy-img  { animation: celebrate-wiggle 1s ease; }
+.celebrate-spin .toy-img    { animation: celebrate-spin 1s ease; }
+.celebrate-jump .toy-img    { animation: celebrate-jump 1.2s ease; }
+.celebrate-sleep .toy-img   { animation: celebrate-sleep 2s infinite ease-in-out; }
+.celebrate-howl .toy-img    { animation: celebrate-howl 1.5s ease; }
+.celebrate-peek .toy-img    { animation: celebrate-peek 1s ease forwards; }
+
+/* ============================================
+   UI
+   ============================================ */
+#ui {
+    position: absolute; top: 12px; left: 12px; right: 12px; z-index: 50;
+    display: flex; justify-content: space-between; align-items: flex-start; pointer-events: none;
+}
+#scoreboard {
+    pointer-events: auto; background: rgba(255,255,255,0.92); backdrop-filter: blur(8px);
+    padding: 12px 28px; border-radius: 28px; font-size: clamp(20px, 4vw, 32px);
+    color: #333; font-weight: 900; display: flex; align-items: center; gap: 12px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.12); border: 2px solid rgba(255,255,255,0.8);
+    transition: transform 0.2s;
+}
+#scoreboard.pulse { animation: sb-pulse 0.4s ease; }
+#hint-text {
+    font-size: clamp(14px, 2.5vw, 20px); color: #e67e22; margin-left: 10px; border-left: 2px solid #ddd; padding-left: 15px;
+    transition: opacity 0.4s;
+}
+@keyframes sb-pulse { 0% { transform: scale(1); } 50% { transform: scale(1.15); } 100% { transform: scale(1); } }
+body.night #scoreboard { background: rgba(30,30,50,0.85); color: #f0e6d3; border-color: rgba(255,255,255,0.1); }
+body.night #hint-text { color: #f39c12; border-color: rgba(255,255,255,0.2); }
+
+/* ============================================
+   Victory
+   ============================================ */
+#victory {
+    position: absolute; inset: 0; z-index: 300;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(0,0,0,0.45); opacity: 0; pointer-events: none;
+    transition: opacity 0.5s;
+}
+#victory.show { opacity: 1; pointer-events: auto; }
+
+#victory-card {
+    background: linear-gradient(135deg, #FFD700, #FFA500); color: #fff;
+    padding: 30px 50px; border-radius: 24px; text-align: center;
     box-shadow: 0 15px 40px rgba(0,0,0,0.3);
-    transform: scale(0.6);
-    transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transform: scale(0.6); transition: transform 0.5s cubic-bezier(0.175,0.885,0.32,1.275);
 }
-
-#victory-overlay.show #victory-message {
-    transform: scale(1);
+#victory.show #victory-card { transform: scale(1); }
+#victory-card h1 { margin: 0 0 10px; font-size: clamp(24px, 5vw, 42px); text-shadow: 2px 2px 0 rgba(0,0,0,0.12); }
+#victory-card p { margin: 0 0 20px; font-size: clamp(14px, 3vw, 20px); opacity: 0.9; }
+#replay-btn {
+    background: #fff; color: #e67e22; border: none; border-radius: 16px;
+    padding: 12px 28px; font-size: clamp(16px, 3.5vw, 22px);
+    font-weight: 900; font-family: 'Nunito', sans-serif; cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12); transition: transform 0.12s;
 }
-
-#victory-message h1 {
-    margin: 0 0 15px 0;
-    font-size: clamp(28px, 6vw, 48px);
-    text-shadow: 2px 2px 0 rgba(0,0,0,0.15);
-}
-
-#play-again-btn {
-    background: #fff;
-    color: #e67e22;
-    border: none;
-    border-radius: 16px;
-    padding: 12px 30px;
-    font-size: clamp(18px, 4vw, 24px);
-    font-weight: 900;
-    font-family: 'Nunito', sans-serif;
-    cursor: pointer;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    transition: transform 0.15s;
-}
-
-#play-again-btn:hover {
-    transform: scale(1.05);
-}
-
-#play-again-btn:active {
-    transform: scale(0.95);
-}
+#replay-btn:hover { transform: scale(1.05); }
+#replay-btn:active { transform: scale(0.95); }

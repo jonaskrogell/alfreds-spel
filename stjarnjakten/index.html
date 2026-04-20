@@ -3,49 +3,59 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Magiska Lekrummet – Stjärnjakten</title>
-    <meta name="description" content="Hitta alla gömda stjärnor i det magiska lekrummet!">
+    <title>Gosedjurens Önskelista</title>
+    <meta name="description" content="Hjälp alla gosedjur med deras önskningar i det magiska lekrummet!">
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;900&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div id="game-container">
-        <!-- Background image — always fills entire viewport -->
-        <img src="assets/new_room_bg.png" alt="Rummet" id="bg-img">
+    <div id="game">
+        <!-- Pannable Scene -->
+        <div id="scene">
+            <!-- Background -->
+            <img src="assets/new_room_bg.png" alt="Lekrummet" id="bg">
+            <div id="night-overlay"></div>
 
-        <!-- Night overlay — dark tint shown in night mode -->
-        <div id="night-overlay"></div>
+            <!-- Interactive Sun/Moon in window -->
+            <div id="sun-moon" class="sun" title="Byt Dag/Natt"></div>
 
-        <!-- Game canvas — stars and toys live here, same coordinate system -->
-        <div id="game-canvas">
-            <!-- Stars and toys are injected by JS here -->
+            <!-- Drop zones -->
+            <div id="zones-layer">
+                <div class="zone" id="zone-window" data-zone="window"><span>🪟 Fönstret</span></div>
+                <div class="zone" id="zone-armchair" data-zone="armchair"><span>💤 Fåtöljen</span></div>
+                <div class="zone" id="zone-behind" data-zone="behind-chair"><span>🙈 Bakom</span></div>
+            </div>
+
+            <!-- Decorative and clickable Toy Box -->
+            <img src="assets/toy_box.png" id="toybox-deco" alt="Leksakslåda" title="Klicka för leksaker!">
+
+            <!-- Main game canvas for toys -->
+            <div id="canvas"></div>
         </div>
 
-        <!-- Toy box — clickable to spawn extra toys -->
-        <img src="assets/toy_box.png" id="toy-box" alt="Leksakslåda">
-
-        <!-- Vignette overlay for depth -->
+        <!-- Vignette and UI -->
         <div id="vignette"></div>
 
-        <!-- UI -->
-        <div id="ui-layer">
-            <div class="score-board" id="score-board">
-                <span class="star-icon">⭐</span>
-                <span id="score-text">0 / 5</span>
+        <div id="ui">
+            <div id="scoreboard">
+                <span class="sb-star">⭐</span>
+                <span id="score">0 / 8</span>
+                <div id="hint-text">Klicka på leksakslådan! 📦</div>
             </div>
-            <button id="night-switch" aria-label="Dag/Natt">🌙</button>
         </div>
 
-        <!-- Victory message -->
-        <div id="victory-overlay">
-            <div id="victory-message">
-                <h1>Alla stjärnor hittade! 🌟</h1>
-                <button id="play-again-btn">Spela igen!</button>
+        <!-- Victory -->
+        <div id="victory">
+            <div id="victory-card">
+                <h1>Alla gosedjur är glada! 🎉</h1>
+                <p>Du hjälpte alla med deras önskningar!</p>
+                <button id="replay-btn">Spela igen! 🔄</button>
             </div>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
     <script src="game.js"></script>
 </body>
 </html>
