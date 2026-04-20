@@ -63,6 +63,9 @@ export class InputManager {
                     window.dispatchEvent(new CustomEvent('block_select', { detail: parseInt(slots[idx].dataset.type) }));
                 }
             }
+            if(e.code === 'KeyK') {
+                this.player.superJump();
+            }
         });
         window.addEventListener('keyup', (e) => {
             this.keys[e.code] = false;
@@ -201,6 +204,13 @@ export class InputManager {
             e.preventDefault(); 
             this.isJumpHeld = false;
         });
+
+        const btnSuper = document.getElementById('btn-super-jump');
+        btnSuper.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            this.player.superJump();
+        });
+
         document.getElementById('btn-place').addEventListener('touchstart', (e) => { e.preventDefault(); window.dispatchEvent(new Event('touch_build')); });
         document.getElementById('btn-break').addEventListener('touchstart', (e) => { e.preventDefault(); window.dispatchEvent(new Event('touch_break')); });
     }

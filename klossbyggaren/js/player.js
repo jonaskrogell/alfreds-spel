@@ -55,6 +55,17 @@ export class Player {
             if (this.audio) this.audio.playJump();
         }
     }
+
+    superJump() {
+        if (this.onGround || this.inWater) {
+            this.velocity.y = this.jumpForce * 2.2;
+            this.onGround = false;
+            if (this.audio) {
+                this.audio.playJump();
+                setTimeout(() => this.audio.playJump(), 100);
+            }
+        }
+    }
     
     update(dt) {
         // Kontrollera om vi är i vatten

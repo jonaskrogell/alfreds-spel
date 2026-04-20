@@ -25,6 +25,11 @@ container.appendChild(renderer.domElement);
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
 scene.add(ambientLight);
 
+// Dimma och siktavstånd (längre nu)
+scene.fog = new THREE.Fog(0x87CEEB, 60, 150);
+camera.far = 1000;
+camera.updateProjectionMatrix();
+
 const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
 dirLight.position.set(20, 100, 20);
 dirLight.castShadow = true;
@@ -146,12 +151,67 @@ window.addEventListener('resize', () => {
     camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
+// Minimap
+const minimapCanvas = document.getElementById('minimap');
+const mmCtx = minimapCanvas.getContext('2d');
+let mmFrame = 0;
+
+function updateMinimap() {
+    const size = minimapCanvas.width;
+    const half = size / 2;
+    mmCtx.clearRect(0,0,size,size);
+    
+    // Rita bakgrund
+    mmCtx.fillStyle = 'rgba(0,0,0,0.2)';
+    mmCtx.beginPath(); mmCtx.arc(half, half, half, 0, Math.PI*2); mmCtx.fill();
+    
+    // Skanna blocks (1 pixel per block)
+    const range = 40;
+    const scale = size / (range * 2);
+    
+    for(let dx = -range; dx <= range; dx++) {
+        for(let dz = -range; dz <= range; dz++) {
+            const wx = Math.floor(player.position.x) + dx;
+            const wz = Math.floor(player.position.z) + dz;
+            const sy = world.getSurfaceHeight(wx, wz);
+            const block = world.getBlock(wx, sy, wz);
+            
+            if (block !== BLOCKS.AIR) {
+                let color = '#795548'; // Dirt
+                if (block === BLOCKS.GRASS) color = '#559944';
+                else if (block === BLOCKS.WATER) color = '#2196F3';
+                else if (block === BLOCKS.SAND) color = '#F4A460';
+                else if (block === BLOCKS.STONE) color = '#9E9E9E';
+                else if (block === BLOCKS.PLANKS || block === BLOCKS.WOOD) color = '#BCAAA4';
+                
+                mmCtx.fillStyle = color;
+                mmCtx.fillRect(half + dx * scale, half + dz * scale, scale, scale);
+            }
+        }
+    }
+    
+    // Rita Alfred
+    mmCtx.fillStyle = '#ff0000';
+    mmCtx.beginPath(); mmCtx.arc(half, half, 4, 0, Math.PI*2); mmCtx.fill();
+    
+    // Riktning (Vart Alfred tittar)
+    const dir = new THREE.Vector3();
+    camera.getWorldDirection(dir);
+    mmCtx.strokeStyle = '#ffffff';
+    mmCtx.beginPath(); mmCtx.moveTo(half, half);
+    mmCtx.lineTo(half + dir.x * 15, half + dir.z * 15); mmCtx.stroke();
+}
+
 const clock = new THREE.Clock();
 function animate() {
     requestAnimationFrame(animate);
     const dt = Math.min(clock.getDelta(), 0.1);
     world.update(player.position.x, player.position.z);
     input.update(); player.update(dt); input.updatePlayerPosition(player.position);
+    
+    mmFrame++;
+    if(mmFrame % 10 === 0) updateMinimap();
+    
     dirLight.position.set(player.position.x + 20, player.position.y + 100, player.position.z + 20);
     dirLight.target.position.copy(player.position); dirLight.target.updateMatrixWorld();
     mobs.forEach(mob => {

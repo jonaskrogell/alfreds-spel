@@ -146,16 +146,22 @@ body, html {
 }
 
 #action-buttons button {
-    width: 80px;
+    width: 100px;
     height: 80px;
-    border-radius: 40px;
-    background-color: rgba(255, 255, 255, 0.3);
-    border: 2px solid rgba(255, 255, 255, 0.5);
+    border-radius: 15px;
+    background-color: rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.4);
     color: white;
     font-weight: bold;
-    font-size: 16px;
+    font-size: 18px;
     font-family: inherit;
     touch-action: none;
+    backdrop-filter: blur(5px);
+}
+
+#btn-super-jump {
+    background-color: rgba(255, 140, 0, 0.6) !important;
+    border-color: rgba(255, 255, 255, 0.6) !important;
 }
 
 #action-buttons button:active {
@@ -206,12 +212,31 @@ body, html {
 .slot[data-type="4"] { background: #8D6E63; } /* Trä/Stam */
 .slot[data-type="5"] { background: #2E7D32; } /* Löv */
 
+#minimap {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 160px;
+    height: 160px;
+    border-radius: 50%;
+    border: 3px solid rgba(255, 255, 255, 0.5);
+    background: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(8px);
+    z-index: 10;
+    pointer-events: none;
+}
+
 @media (max-width: 768px) {
     .hide-on-mobile {
         display: none;
     }
     #inventory-ui {
-        top: 10px;
-        bottom: auto;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+    }
+    #minimap {
+        width: 120px;
+        height: 120px;
     }
 }

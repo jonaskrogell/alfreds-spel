@@ -218,7 +218,8 @@ export class World {
     constructor(scene) { this.scene = scene; this.chunks = {}; }
     getChunkKey(cx, cz) { return cx + ',' + cz; }
     update(playerX, playerZ) {
-        const pCx = Math.floor(playerX / CHUNK_SIZE); const pCz = Math.floor(playerZ / CHUNK_SIZE); const renderDistance = 3;
+        const pCx = Math.floor(playerX / CHUNK_SIZE); const pCz = Math.floor(playerZ / CHUNK_SIZE); 
+        const renderDistance = 6; // Tidigare 3
         for (let x = -renderDistance; x <= renderDistance; x++) { for (let z = -renderDistance; z <= renderDistance; z++) {
             const cx = pCx+x, cz = pCz+z, key = this.getChunkKey(cx, cz);
             if (!this.chunks[key]) this.chunks[key] = new Chunk(this.scene, cx, cz);
