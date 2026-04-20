@@ -1,13 +1,43 @@
 import * as THREE from 'three';
 import { materials, BLOCKS, BLOCK_MATERIAL } from './textures.js';
-import { createNoise2D, createNoise3D } from 'https://unpkg.com/simplex-noise@4.0.1/dist/esm/simplex-noise.js';
+
+// Smooth deterministic noise (Lcg-based with interpolation)
+function createSimpleNoise(seed) {
+    const table = new Float32Array(256);
+    let s = seed;
+    for(let i=0; i<256; i++) { s = (s * 1664525 + 1013904223) >>> 0; table[i] = (s / 0xffffffff); }
+    
+    const getVal = (ix, iz) => table[Math.abs(ix * 123 + iz * 456) % 256];
+    
+    return (x, z) => {
+        const x0 = Math.floor(x), z0 = Math.floor(z);
+        const tx = x - x0, tz = z - z0;
+        // Bi-linear interpolation
+        const v00 = getVal(x0, z0);
+        const v10 = getVal(x0 + 1, z0);
+        const v01 = getVal(x0, z0 + 1);
+        const v11 = getVal(x0 + 1, z0 + 1);
+        const nx0 = v00 * (1 - tx) + v10 * tx;
+        const nx1 = v01 * (1 - tx) + v11 * tx;
+        return (nx0 * (1 - tz) + nx1 * tz) * 2 - 1;
+    };
+}
+
+let createNoise2D = (rand) => createSimpleNoise(rand() * 1000);
+let createNoise3D = (rand) => (x, y, z) => createSimpleNoise(rand() * 1000)(x + z, y);
+
+// Attempt to load external noise library
+import('https://cdn.skypack.dev/simplex-noise@4.0.1').then(module => {
+    createNoise2D = module.createNoise2D;
+    createNoise3D = module.createNoise3D;
+}).catch(() => console.warn('Simplex-noise fallback active.'));
 
 // ============================================================
 // World constants
 // ============================================================
 const CHUNK_SIZE = 16;
 const CHUNK_HEIGHT = 48;
-const WATER_LEVEL = 10;
+export const WATER_LEVEL = 10;
 const CLOUD_LEVEL = 40;
 
 // Biome type constants (used for deterministic biome placement)
@@ -22,7 +52,8 @@ const BIOMES = {
 };
 
 // Shared noise generators (one per World instance below)
-let noise2D, noise3D;
+let noise2D = () => 0; 
+let noise3D = () => 0;
 
 // Shared geometry for instanced meshes (avoids GPU memory leak)
 const sharedBoxGeo = new THREE.BoxGeometry(1, 1, 1);
@@ -343,14 +374,12 @@ class Chunk {
         });
     }
 
-    // Major highways: curved 3-block-wide roads laid on certain chunks
-    // to connect biomes across this chunk
-    // to help the player navigate
+    // Major highways: curved high-visibility roads
     tryGenerateHighway() {
         const centerX = Math.floor(CHUNK_SIZE / 2);
         const centerZ = Math.floor(CHUNK_SIZE / 2);
         const curveFactor = 0.003;
-        const roadWidth = 3;
+        const roadWidth = 6;
         const halfWidth = Math.floor(roadWidth / 2);
 
         const placeEW = (this.chunkZ % 8 === 0);
@@ -391,11 +420,8 @@ class Chunk {
         // Only replace ground blocks (keep buildings)
         if (current === BLOCKS.GRASS || current === BLOCKS.DIRT || current === BLOCKS.SAND || current === BLOCKS.GRAVEL) {
             this.data[this.getIndex(x, y, z)] = BLOCKS.PATH;
-            // Clear flowers/grass/entities above
+            // Clear EVERYTHING above up to sky (no early exit for AIR)
             for (let yy = y + 1; yy < CHUNK_HEIGHT; yy++) {
-                const above = this.getBlock(x, yy, z);
-                if (above === BLOCKS.AIR) break;
-                // Remove all entities and plants
                 this.data[this.getIndex(x, yy, z)] = BLOCKS.AIR;
             }
         }
@@ -457,12 +483,6 @@ class Chunk {
         }
         this.meshes = {};
 
-        // Get camera frustum for frustum culling
-        const frustum = new THREE.Frustum();
-        const cameraViewProjectionMatrix = new THREE.Matrix4();
-        // Camera frustum culling: skip chunks completely off-screen
-        const cullingThreshold = 2; // Extra chunks beyond frustum for smooth transition
-
         // Count exposed blocks by type
         const counts = {};
         const instances = [];
@@ -471,22 +491,6 @@ class Chunk {
                 for (let z = 0; z < CHUNK_SIZE; z++) {
                     const block = this.data[this.getIndex(x, y, z)];
                     if (block === BLOCKS.AIR) continue;
-
-                    // Frustum culling: skip chunks entirely off-screen
-                    const worldX = this.chunkX * CHUNK_SIZE + x;
-                    const worldZ = this.chunkZ * CHUNK_SIZE + z;
-                    const worldY = y;
-                    
-                    // Simple frustum check - skip if block is far outside camera view
-                    const screenX = worldX; // Will be transformed in render
-                    const screenZ = worldZ;
-                    const chunkCulled =
-                        worldX < camera.position.x - 50 - cullingThreshold * CHUNK_SIZE ||
-                        worldX > camera.position.x + 50 + cullingThreshold * CHUNK_SIZE ||
-                        worldZ < camera.position.z - 50 - cullingThreshold * CHUNK_SIZE ||
-                        worldZ > camera.position.z + 50 + cullingThreshold * CHUNK_SIZE;
-
-                    if (chunkCulled) continue;
 
                     const isExposed =
                         this.getBlock(x + 1, y, z) === BLOCKS.AIR ||
@@ -569,8 +573,10 @@ export class World {
         // Initialize shared noise with a deterministic seed-like behaviour
         // simplex-noise's createNoise2D accepts a random function; we derive one from the seed
         const rand = mulberry32(this.seed);
-        noise2D = createNoise2D(rand);
-        noise3D = createNoise3D(rand);
+        const n2 = createNoise2D(rand);
+        const n3 = createNoise3D(rand);
+        if (typeof n2 === 'function') noise2D = n2;
+        if (typeof n3 === 'function') noise3D = n3;
     }
 
     getChunkKey(cx, cz) { return cx + ',' + cz; }
@@ -649,4 +655,4 @@ function mulberry32(seed) {
 }
 
 // Export constants used elsewhere
-export { CHUNK_SIZE, CHUNK_HEIGHT, WATER_LEVEL, CLOUD_LEVEL, BIOMES };
+export { CHUNK_SIZE, CHUNK_HEIGHT, CLOUD_LEVEL, BIOMES };

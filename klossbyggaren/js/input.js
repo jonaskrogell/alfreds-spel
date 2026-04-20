@@ -109,7 +109,10 @@ export class InputManager {
             btnStart.addEventListener('click', (e) => {
                 e.stopPropagation();
                 this.isStarted = true;
-                this.updateMenuVisibility();
+                // Force hide immediately
+                const menu = document.getElementById('menu');
+                if (menu) menu.style.display = 'none';
+                
                 if (!this.isTouch) this.domElement.requestPointerLock();
             });
         }
@@ -118,10 +121,18 @@ export class InputManager {
     updateMenuVisibility() {
         const menu = document.getElementById('menu');
         if (!menu) return;
+        
+        // At start, hide menu immediately if started
+        // If we want to pause, we rely on the pointerlockchange event
         if (this.isStarted && (this.isLocked || this.isTouch)) {
             menu.style.display = 'none';
-        } else {
+        } else if (!this.isStarted) {
             menu.style.display = 'flex';
+        } else if (this.isStarted && !this.isLocked && !this.isTouch) {
+            // This is the "Paused" state
+            menu.style.display = 'flex';
+            const btnStart = document.getElementById('btn-start');
+            if (btnStart) btnStart.textContent = 'Fortsätt';
         }
     }
 

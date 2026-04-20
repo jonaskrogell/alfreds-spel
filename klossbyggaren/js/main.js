@@ -1,5 +1,6 @@
+console.log('Klossbyggaren main.js loading...');
 import * as THREE from 'three';
-import { World } from './world.js';
+import { World, WATER_LEVEL } from './world.js';
 import { Player } from './player.js';
 import { InputManager } from './input.js';
 import { BLOCKS, SOLID_BLOCKS } from './textures.js';
@@ -88,7 +89,7 @@ const audio = new AudioManager();
 const container = document.getElementById('game-container');
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87CEEB);
-scene.fog = new THREE.Fog(0x87CEEB, 60, 150);
+scene.fog = new THREE.Fog(0x87CEEB, 80, 200);
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: false });
@@ -112,7 +113,7 @@ scene.add(dirLight);
 // ============================================================
 // World, Player, Input
 // ============================================================
-// Determine seed - load or new
+// worldSeed: load or random
 const savedState = loadGameState();
 const worldSeed = savedState?.seed ?? Math.floor(Math.random() * 1e9);
 
@@ -129,7 +130,11 @@ if (savedState) {
     if (savedState.edits) {
         Object.assign(playerEdits, savedState.edits);
     }
+} else {
+    // Default start position - more central in first chunk
+    player.position.set(24, 40, 24);
 }
+
 
 // ============================================================
 // Highlight box for selected block
@@ -199,34 +204,73 @@ function createBird(x, y, z) {
     mobs.push({ mesh: group, velocity: new THREE.Vector3(), nextMove: 0, phase: Math.random() * Math.PI * 2, kind: 'bird', anchor: { x, y, z }, wings: [wing1, wing2] });
 }
 
-// Spawn a variety of mobs around spawn
+// Spawn a variety of mobs around spawn - reduced counts for better start
 function spawnInitialMobs() {
     const types = ['sheep', 'cow', 'pig', 'critter'];
-    // Land animals: 25 total spread out
-    for (let i = 0; i < 25; i++) {
-        const angle = Math.random() * Math.PI * 2;
-        const dist = 8 + Math.random() * 50;
-        const x = Math.cos(angle) * dist + player.position.x;
-        const z = Math.sin(angle) * dist + player.position.z;
-        const y = Math.max(world.getSurfaceHeight(x, z) + 1, 12);
-        const type = types[Math.floor(Math.random() * types.length)];
-        createLandMob(x, y, z, type);
-    }
-    // Fish: 20 in nearby water
-    for (let i = 0; i < 20; i++) {
-        const angle = Math.random() * Math.PI * 2;
-        const dist = 15 + Math.random() * 60;
-        const x = Math.cos(angle) * dist + player.position.x;
-        const z = Math.sin(angle) * dist + player.position.z;
-        createFish(x, 9.5, z); // slightly below water level
-    }
-    // Birds: 8 flying around
-    for (let i = 0; i < 8; i++) {
+    // Land animals: 10 spread out
+    for (let i = 0; i < 10; i++) {
         const angle = Math.random() * Math.PI * 2;
         const dist = 10 + Math.random() * 40;
         const x = Math.cos(angle) * dist + player.position.x;
         const z = Math.sin(angle) * dist + player.position.z;
-        createBird(x, 25 + Math.random() * 10, z);
+        const y = world.getSurfaceHeight(Math.floor(x), Math.floor(z)) + 1;
+        if (y > WATER_LEVEL) createLandMob(x, y, z, types[Math.floor(Math.random() * types.length)]);
+    }
+    // Fish: 6 in nearby water
+    for (let i = 0; i < 6; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const dist = 10 + Math.random() * 50;
+        const x = Math.cos(angle) * dist + player.position.x;
+        const z = Math.sin(angle) * dist + player.position.z;
+        if (world.getBlock(x, 9, z) === BLOCKS.WATER) createFish(x, 9.0, z);
+    }
+    // Birds: 3 flying around
+    for (let i = 0; i < 3; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const dist = 20 + Math.random() * 40;
+        const x = Math.cos(angle) * dist + player.position.x;
+        const z = Math.sin(angle) * dist + player.position.z;
+        createBird(x, 28 + Math.random() * 8, z);
+    }
+}
+
+// Dynamic spawning: spawns a mob further away as player moves
+let lastMobSpawn = 0;
+let lastMobCleanup = 0;
+function updateDynamicMobs(dt) {
+    const now = Date.now();
+    // Cleanup mobs > 120 units away
+    if (now - lastMobCleanup > 5000) {
+        lastMobCleanup = now;
+        for (let i = mobs.length - 1; i >= 0; i--) {
+            const dSq = mobs[i].mesh.position.distanceToSquared(player.position);
+            if (dSq > 120 * 120) {
+                scene.remove(mobs[i].mesh);
+                mobs.splice(i, 1);
+            }
+        }
+    }
+
+    // Spawn new mobs if count is low
+    if (mobs.length < 30 && now - lastMobSpawn > 3000) {
+        lastMobSpawn = now;
+        const angle = Math.random() * Math.PI * 2;
+        const dist = 70 + Math.random() * 30; // spawn at distance
+        const x = Math.cos(angle) * dist + player.position.x;
+        const z = Math.sin(angle) * dist + player.position.z;
+        
+        const r = Math.random();
+        if (r < 0.6) { // Land animal
+            const y = world.getSurfaceHeight(Math.floor(x), Math.floor(z)) + 1;
+            if (y > WATER_LEVEL + 1) {
+                const types = ['sheep', 'cow', 'pig', 'critter'];
+                createLandMob(x, y, z, types[Math.floor(Math.random() * types.length)]);
+            }
+        } else if (r < 0.85) { // Bird
+             createBird(x, 25 + Math.random() * 15, z);
+        } else { // Fish
+            if (world.getBlock(x, 9, z) === BLOCKS.WATER) createFish(x, 9.0, z);
+        }
     }
 }
 
@@ -472,6 +516,7 @@ function animate() {
 
     // Animate mobs - reduce update frequency to every 2 frames
     if (Math.floor(performance.now() / 16) % 2 === 0) {
+        updateDynamicMobs(dt);
         mobs.forEach(mob => {
             if (mob.kind === 'land') {
                 if (Date.now() > mob.nextMove) {
@@ -483,13 +528,28 @@ function animate() {
                 if (isMoving) {
                     mob.phase += dt * 6;
                     mob.mesh.position.addScaledVector(mob.velocity, dt);
+                    mob.mesh.position.y = world.getSurfaceHeight(mob.mesh.position.x, mob.mesh.position.z) + 1 + Math.abs(Math.sin(mob.phase)) * 0.1;
                     mob.mesh.rotation.y = Math.atan2(mob.velocity.x, mob.velocity.z);
                 } else { mob.phase = 0; }
+            } else if (mob.kind === 'fish') {
+                mob.phase += dt;
+                mob.mesh.position.x += Math.cos(mob.phase * 0.5) * 0.03;
+                mob.mesh.position.z += Math.sin(mob.phase * 0.5) * 0.03;
+                mob.mesh.position.y = 9.0 + Math.sin(mob.phase * 2) * 0.2;
+                mob.mesh.rotation.y = mob.phase * 0.5 + Math.PI;
+            } else if (mob.kind === 'bird') {
+                mob.phase += dt;
+                mob.mesh.position.x += Math.cos(mob.phase * 0.3) * 0.15;
+                mob.mesh.position.z += Math.sin(mob.phase * 0.3) * 0.15;
+                mob.mesh.position.y += Math.sin(mob.phase * 1.5) * 0.05;
+                mob.mesh.rotation.y = mob.phase * 0.3 + Math.PI / 2;
+                if (mob.wings) {
+                    mob.wings[0].rotation.z = Math.sin(mob.phase * 10) * 0.8;
+                    mob.wings[1].rotation.z = -Math.sin(mob.phase * 10) * 0.8;
+                }
             }
         });
     }
-}
-
     // Highlight hovered block
     const hit = voxelRaycast(
         camera.getWorldPosition(new THREE.Vector3()),
@@ -513,29 +573,26 @@ function animate() {
     renderer.render(scene, camera);
 }
 
-// ============================================================
-// Startup
-// ============================================================
-world.update(player.position.x, player.position.z);
+// Startup sequence
+try {
+    console.log('Initializing world...');
+    world.update(player.position.x, player.position.z);
 
-// Wait for initial chunks to generate, then place player on ground and start
-setTimeout(() => {
-    // Apply any saved player edits now that chunks exist
-    applyPlayerEdits();
+    // Wait slightly for chunks, then start
+    setTimeout(() => {
+        console.log('Running final init...');
+        applyPlayerEdits();
 
-    // Place player on top of terrain if new game
-    if (!savedState) {
-        for (let y = 45; y > 0; y--) {
-            const b = world.getBlock(Math.floor(player.position.x), y, Math.floor(player.position.z));
-            if (b !== BLOCKS.AIR && b !== BLOCKS.WATER && b !== BLOCKS.CLOUD) {
-                player.position.y = y + 2;
-                break;
-            }
+        if (!savedState) {
+            // Find ground or safe height
+            player.position.y = 40; 
         }
-    }
 
-    // Spawn animals around initial position
-    spawnInitialMobs();
-
-    animate();
-}, 200);
+        spawnInitialMobs();
+        
+        console.log('Entering animate loop');
+        animate();
+    }, 500);
+} catch (err) {
+    console.error('CRITICAL STARTUP ERROR:', err);
+}
