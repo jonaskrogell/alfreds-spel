@@ -1,11 +1,14 @@
 import * as THREE from 'three';
 import { materials, BLOCKS } from './textures.js';
-import { createNoise2D } from 'https://unpkg.com/simplex-noise@4.0.1/dist/esm/simplex-noise.js';
+import { createNoise2D, createNoise3D } from 'https://unpkg.com/simplex-noise@4.0.1/dist/esm/simplex-noise.js';
 
 const CHUNK_SIZE = 16;
-const CHUNK_HEIGHT = 32;
+const CHUNK_HEIGHT = 48; // Ökad höjd för mer variation
+const WATER_LEVEL = 10;
+const CLOUD_LEVEL = 40;
 
 const noise2D = createNoise2D();
+const noise3D = createNoise3D();
 
 class Chunk {
     constructor(scene, chunkX, chunkZ) {
@@ -13,7 +16,6 @@ class Chunk {
         this.chunkX = chunkX;
         this.chunkZ = chunkZ;
         
-        // 1D array för voxel data (x, y, z)
         this.data = new Uint8Array(CHUNK_SIZE * CHUNK_HEIGHT * CHUNK_SIZE);
         this.meshes = {};
         
@@ -33,56 +35,100 @@ class Chunk {
     setBlock(x, y, z, type) {
         if(x < 0 || x >= CHUNK_SIZE || y < 0 || y >= CHUNK_HEIGHT || z < 0 || z >= CHUNK_SIZE) return;
         this.data[this.getIndex(x, y, z)] = type;
-        this.buildMesh(); // Rebuild heela chunken
+        this.buildMesh();
     }
     
     generateTerrain() {
         const worldXStart = this.chunkX * CHUNK_SIZE;
         const worldZStart = this.chunkZ * CHUNK_SIZE;
-        
-        for (let x = 0; x < CHUNK_SIZE; x++) {
-            for (let z = 0; x < CHUNK_SIZE; z++) { // BUG Varning: loopen ska avslutas vid CHUNK_SIZE
-                break; // Skriver om nedan
-            }
-        }
 
         for (let x = 0; x < CHUNK_SIZE; x++) {
             for (let z = 0; z < CHUNK_SIZE; z++) {
                 const worldX = worldXStart + x;
                 const worldZ = worldZStart + z;
                 
-                // Generera höjd med Simplex Noise
-                const noiseVal = noise2D(worldX * 0.03, worldZ * 0.03);
-                // Mappa noise (-1 till 1) till höjd (ex. 5 till 15)
-                const height = Math.floor(((noiseVal + 1) / 2) * 10) + 5;
+                // Grundterräng
+                const noiseVal = noise2D(worldX * 0.02, worldZ * 0.02);
+                let height = Math.floor(((noiseVal + 1) / 2) * 15) + 8;
                 
-                for (let y = 0; y <= height; y++) {
-                    let type = BLOCKS.STONE;
-                    if (y === height) {
-                        type = BLOCKS.GRASS;
-                        
-                        // Generera lite träd, 2% risk per gräsblock
-                        if(Math.random() < 0.02 && x > 2 && x < CHUNK_SIZE-2 && z > 2 && z < CHUNK_SIZE-2) {
-                            if(y + 4 < CHUNK_HEIGHT) {
-                                // Stam
-                                this.data[this.getIndex(x, y+1, z)] = BLOCKS.WOOD;
-                                this.data[this.getIndex(x, y+2, z)] = BLOCKS.WOOD;
-                                this.data[this.getIndex(x, y+3, z)] = BLOCKS.WOOD;
-                                // Lövverk kors
-                                this.data[this.getIndex(x, y+4, z)] = BLOCKS.LEAVES;
-                                this.data[this.getIndex(x+1, y+3, z)] = BLOCKS.LEAVES;
-                                this.data[this.getIndex(x-1, y+3, z)] = BLOCKS.LEAVES;
-                                this.data[this.getIndex(x, y+3, z+1)] = BLOCKS.LEAVES;
-                                this.data[this.getIndex(x, y+3, z-1)] = BLOCKS.LEAVES;
-                            }
-                        }
-                    } else if (y >= height - 2) {
-                        type = BLOCKS.DIRT;
-                    }
+                // Raviner (Smala djupa dalar)
+                const ravineNoise = Math.abs(noise2D(worldX * 0.01, worldZ * 0.01));
+                if (ravineNoise < 0.05) {
+                    height -= Math.floor((1 - (ravineNoise / 0.05)) * 12);
+                }
+                
+                for (let y = 0; y < CHUNK_HEIGHT; y++) {
+                    const idx = this.getIndex(x, y, z);
                     
-                    // Skriv inte över träd om det redan skapats (if type == AIR etc, men nu bygger vi botten upp)
-                    if(this.data[this.getIndex(x, y, z)] === BLOCKS.AIR) {
-                        this.data[this.getIndex(x, y, z)] = type;
+                    // Grottor (3D Noise)
+                    const caveNoise = noise3D(worldX * 0.08, y * 0.08, worldZ * 0.08);
+                    const isCave = y < height && caveNoise > 0.4;
+
+                    if (isCave) {
+                        this.data[idx] = BLOCKS.AIR;
+                    } else if (y <= height) {
+                        let type = BLOCKS.STONE;
+                        if (y === height) {
+                            if (y < WATER_LEVEL + 1) {
+                                type = BLOCKS.DIRT; // Sandigt/jordigt under vatten
+                            } else {
+                                type = BLOCKS.GRASS;
+                            }
+                        } else if (y >= height - 2) {
+                            type = BLOCKS.DIRT;
+                        }
+                        this.data[idx] = type;
+                    } else if (y <= WATER_LEVEL) {
+                        // Fyll med vatten upp till vattennivån
+                        this.data[idx] = BLOCKS.WATER;
+                    }
+                }
+                
+                // Moln (Glesa)
+                if (noise2D(worldX * 0.1, worldZ * 0.1) > 0.6) {
+                    this.data[this.getIndex(x, CLOUD_LEVEL, z)] = BLOCKS.CLOUD;
+                }
+                
+                // Träd och Hus (Endast på gräs)
+                const surfaceY = height;
+                if (surfaceY > WATER_LEVEL && this.getBlock(x, surfaceY, z) === BLOCKS.GRASS) {
+                    const rand = Math.random();
+                    if (rand < 0.015) { // Träd
+                        this.generateTree(x, surfaceY + 1, z);
+                    } else if (rand < 0.017) { // Litet Hus
+                        this.generateHouse(x, surfaceY + 1, z);
+                    }
+                }
+            }
+        }
+    }
+    
+    generateTree(x, y, z) {
+        if (y + 4 >= CHUNK_HEIGHT) return;
+        for (let h = 0; h < 4; h++) this.data[this.getIndex(x, y+h, z)] = BLOCKS.WOOD;
+        // Lövverk
+        for (let lx = -1; lx <= 1; lx++) {
+            for (let lz = -1; lz <= 1; lz++) {
+                for (let ly = 2; ly <= 4; ly++) {
+                    if (this.getBlock(x+lx, y+ly, z+lz) === BLOCKS.AIR) {
+                        this.data[this.getIndex(x+lx, y+ly, z+lz)] = BLOCKS.LEAVES;
+                    }
+                }
+            }
+        }
+    }
+
+    generateHouse(x, y, z) {
+        if (x < 2 || x > CHUNK_SIZE - 4 || z < 2 || z > CHUNK_SIZE - 4 || y + 4 >= CHUNK_HEIGHT) return;
+        const width = 3, height = 3, depth = 3;
+        for (let h = 0; h < height; h++) {
+            for (let dx = 0; dx < width; dx++) {
+                for (let dz = 0; dz < depth; dz++) {
+                    // Väggar och Tak
+                    const isWall = dx === 0 || dx === width - 1 || dz === 0 || dz === depth - 1 || h === height - 1;
+                    const isDoor = dx === 1 && dz === 0 && h < 2;
+                    if (isWall && !isDoor) {
+                        this.data[this.getIndex(x + dx, y + h, z + dz)] = BLOCKS.PLANKS;
                     }
                 }
             }
@@ -90,14 +136,12 @@ class Chunk {
     }
     
     buildMesh() {
-        // Ta bort gamla meshes
         for (const type in this.meshes) {
             this.scene.remove(this.meshes[type]);
-            this.meshes[type].dispose();
+            if (this.meshes[type].geometry) this.meshes[type].geometry.dispose();
         }
         this.meshes = {};
         
-        // Räkna instanser per material
         const counts = {};
         for(let key in BLOCKS) counts[BLOCKS[key]] = 0;
         
@@ -108,14 +152,11 @@ class Chunk {
                 for (let z = 0; z < CHUNK_SIZE; z++) {
                     const block = this.data[this.getIndex(x, y, z)];
                     if (block !== BLOCKS.AIR) {
-                        // Optimering: rita bara om grannen är luft (enkel culling, kollar ej grann-chunks just nu)
                         const isExposed = 
-                            this.getBlock(x+1, y, z) === BLOCKS.AIR ||
-                            this.getBlock(x-1, y, z) === BLOCKS.AIR ||
-                            this.getBlock(x, y+1, z) === BLOCKS.AIR ||
-                            this.getBlock(x, y-1, z) === BLOCKS.AIR ||
-                            this.getBlock(x, y, z+1) === BLOCKS.AIR ||
-                            this.getBlock(x, y, z-1) === BLOCKS.AIR;
+                            this.getBlock(x+1, y, z) === BLOCKS.AIR || this.getBlock(x-1, y, z) === BLOCKS.AIR ||
+                            this.getBlock(x, y+1, z) === BLOCKS.AIR || this.getBlock(x, y-1, z) === BLOCKS.AIR ||
+                            this.getBlock(x, y, z+1) === BLOCKS.AIR || this.getBlock(x, y, z-1) === BLOCKS.AIR ||
+                            block === BLOCKS.WATER; // Vatten renderas alltid (enkelt)
                             
                         if(isExposed) {
                             counts[block]++;
@@ -126,24 +167,21 @@ class Chunk {
             }
         }
         
-        // Skapa InstancedMeshes
         const boxGeo = new THREE.BoxGeometry(1, 1, 1);
-        const matrix = new THREE.Matrix4();
+        boxGeo.translate(0.5, 0.5, 0.5); // Fixar alignment mot Math.floor
         
+        const matrix = new THREE.Matrix4();
         const offsets = {};
         
-        // Initiera Instanced meshes
-        const activeBlockTypes = [BLOCKS.GRASS, BLOCKS.DIRT, BLOCKS.STONE, BLOCKS.WOOD, BLOCKS.LEAVES];
+        const activeBlockTypes = Object.values(BLOCKS).filter(b => b !== BLOCKS.AIR);
         activeBlockTypes.forEach(bId => {
             if(counts[bId] > 0) {
                 let matName = Object.keys(BLOCKS).find(k => BLOCKS[k] === bId).toLowerCase();
                 let mat = materials[matName];
                 
                 const mesh = new THREE.InstancedMesh(boxGeo, mat, counts[bId]);
-                mesh.castShadow = true;
-                mesh.receiveShadow = true;
-                
-                // Positionen för denna chunk
+                mesh.castShadow = bId !== BLOCKS.WATER && bId !== BLOCKS.CLOUD;
+                mesh.receiveShadow = bId !== BLOCKS.WATER;
                 mesh.position.set(this.chunkX * CHUNK_SIZE, 0, this.chunkZ * CHUNK_SIZE);
                 
                 this.scene.add(mesh);
@@ -152,7 +190,6 @@ class Chunk {
             }
         });
         
-        // Applicera matriser
         instances.forEach(inst => {
             matrix.setPosition(inst.x, inst.y, inst.z);
             const mesh = this.meshes[inst.block];
@@ -162,7 +199,6 @@ class Chunk {
             }
         });
         
-        // Uppdatera instanser
         for(let type in this.meshes) {
             this.meshes[type].instanceMatrix.needsUpdate = true;
         }
@@ -171,7 +207,7 @@ class Chunk {
     destroy() {
         for (const type in this.meshes) {
             this.scene.remove(this.meshes[type]);
-            this.meshes[type].dispose();
+            if (this.meshes[type].geometry) this.meshes[type].geometry.dispose();
         }
     }
 }
@@ -179,21 +215,18 @@ class Chunk {
 export class World {
     constructor(scene) {
         this.scene = scene;
-        this.chunks = {}; // "x,z" -> Chunk
+        this.chunks = {};
     }
     
     getChunkKey(cx, cz) {
-        return \`\${cx},\${cz}\`;
+        return cx + ',' + cz;
     }
     
     update(playerX, playerZ) {
-        // Räkna ut vilken chunk spelaren står i
         const pCx = Math.floor(playerX / CHUNK_SIZE);
         const pCz = Math.floor(playerZ / CHUNK_SIZE);
+        const renderDistance = 3;
         
-        const renderDistance = 3; // 3 chunks åt varje håll (7x7 rutnät = 49 chunks)
-        
-        // Ladda in nya chunks
         for (let x = -renderDistance; x <= renderDistance; x++) {
             for (let z = -renderDistance; z <= renderDistance; z++) {
                 const cx = pCx + x;
@@ -205,7 +238,6 @@ export class World {
             }
         }
         
-        // TODO: Ta bort chunks som är för långt bort för att spara minne (Memory Management)
         for(let key in this.chunks) {
             const chunk = this.chunks[key];
             if(Math.abs(chunk.chunkX - pCx) > renderDistance + 1 || 
@@ -216,35 +248,33 @@ export class World {
         }
     }
     
-    // Konvertera världs-koordinat till intern chunk/voxel-koordinat
     getBlock(wx, wy, wz) {
         const cx = Math.floor(wx / CHUNK_SIZE);
         const cz = Math.floor(wz / CHUNK_SIZE);
         const key = this.getChunkKey(cx, cz);
-        
         if(!this.chunks[key]) return BLOCKS.AIR;
-        
-        // Hantera modulos för negativa världen rätt
-        let lx = wx % CHUNK_SIZE;
-        if(lx < 0) lx += CHUNK_SIZE;
-        let lz = wz % CHUNK_SIZE;
-        if(lz < 0) lz += CHUNK_SIZE;
-        
-        return this.chunks[key].getBlock(lx, wy, lz);
+        let lx = ((Math.floor(wx) % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+        let lz = ((Math.floor(wz) % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+        return this.chunks[key].getBlock(lx, Math.floor(wy), lz);
     }
     
     setBlock(wx, wy, wz, type) {
         const cx = Math.floor(wx / CHUNK_SIZE);
         const cz = Math.floor(wz / CHUNK_SIZE);
         const key = this.getChunkKey(cx, cz);
-        
         if(!this.chunks[key]) return;
-        
-        let lx = wx % CHUNK_SIZE;
-        if(lx < 0) lx += CHUNK_SIZE;
-        let lz = wz % CHUNK_SIZE;
-        if(lz < 0) lz += CHUNK_SIZE;
-        
-        this.chunks[key].setBlock(lx, wy, lz, type);
+        let lx = ((Math.floor(wx) % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+        let lz = ((Math.floor(wz) % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+        this.chunks[key].setBlock(lx, Math.floor(wy), lz, type);
+    }
+
+    getSurfaceHeight(wx, wz) {
+        for(let y = CHUNK_HEIGHT - 1; y > 0; y--) {
+            const block = this.getBlock(wx, y, wz);
+            if(block !== BLOCKS.AIR && block !== BLOCKS.WATER && block !== BLOCKS.CLOUD) {
+                return y;
+            }
+        }
+        return 0;
     }
 }

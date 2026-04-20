@@ -1,15 +1,15 @@
 import * as THREE from 'three';
 
 export class InputManager {
-    constructor(camera, domElement, player, document) {
+    constructor(camera, domElement, player) {
         this.camera = camera;
         this.domElement = domElement;
         this.player = player;
-        this.document = document;
         
         // State
         this.keys = {};
         this.isLocked = false;
+        this.isStarted = false;
         
         // Touch State
         this.isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
@@ -26,10 +26,10 @@ export class InputManager {
         this.yaw.add(this.pitch);
         this.pitch.add(this.camera);
         
-        // Vi lägger yaw-objektet i världen (scenen) istället för kameran direkt
-        
         this.setupKeyboard();
         this.setupMouse();
+        this.setupStartButton();
+
         if(this.isTouch) {
             this.setupTouch();
             // Visa touch UI
@@ -41,18 +41,27 @@ export class InputManager {
         scene.add(this.yaw);
     }
     
-    // Används av player.js via Camera direction
-    // Men player.js läser camera.getWorldDirection, vilket funkar perfekt
-    // när kameran är barn till pitch som är barn till yaw!
-    
     updatePlayerPosition(pos) {
-        this.yaw.position.copy(pos);
+        this.yaw.position.set(pos.x, pos.y + 1.5, pos.z);
     }
     
     setupKeyboard() {
         window.addEventListener('keydown', (e) => {
             this.keys[e.code] = true;
-            if(e.code === 'Space') this.player.jump();
+            if(e.code === 'Space') {
+                e.preventDefault();
+                this.player.jump();
+            }
+            // Inventory snabbval (1-5)
+            if(e.code >= 'Digit1' && e.code <= 'Digit5') {
+                const idx = parseInt(e.code.replace('Digit', '')) - 1;
+                const slots = document.querySelectorAll('.slot');
+                if(slots[idx]) {
+                    slots.forEach(s => s.classList.remove('active'));
+                    slots[idx].classList.add('active');
+                    window.dispatchEvent(new CustomEvent('block_select', { detail: parseInt(slots[idx].dataset.type) }));
+                }
+            }
         });
         window.addEventListener('keyup', (e) => {
             this.keys[e.code] = false;
@@ -62,19 +71,14 @@ export class InputManager {
     setupMouse() {
         // Pointer Lock på Desktop (När man klickar i fönstret)
         this.domElement.addEventListener('click', () => {
-            if(!this.isTouch && !this.isLocked) {
+            if(!this.isTouch && this.isStarted && !this.isLocked) {
                 this.domElement.requestPointerLock();
             }
         });
         
         document.addEventListener('pointerlockchange', () => {
             this.isLocked = (document.pointerLockElement === this.domElement);
-            const menu = document.getElementById('menu');
-            if(this.isLocked || this.isTouch) {
-                menu.style.display = 'none';
-            } else {
-                menu.style.display = 'flex';
-            }
+            this.updateMenuVisibility();
         });
         
         document.addEventListener('mousemove', (e) => {
@@ -82,8 +86,28 @@ export class InputManager {
                 this.rotateCamera(e.movementX, e.movementY);
             }
         });
-        
-        // Hantera mus-klick för att bygga (i main.js)
+    }
+
+    setupStartButton() {
+        const btnStart = document.getElementById('btn-start');
+        btnStart.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.isStarted = true;
+            this.updateMenuVisibility();
+            
+            if (!this.isTouch) {
+                this.domElement.requestPointerLock();
+            }
+        });
+    }
+
+    updateMenuVisibility() {
+        const menu = document.getElementById('menu');
+        if (this.isStarted && (this.isLocked || this.isTouch)) {
+            menu.style.display = 'none';
+        } else {
+            menu.style.display = 'flex';
+        }
     }
     
     rotateCamera(movementX, movementY) {
@@ -102,11 +126,7 @@ export class InputManager {
         stick.id = 'joystick-stick';
         zone.appendChild(stick);
         
-        // Dölj startmenyn automatiskt med Startknappen
-        document.getElementById('btn-start').addEventListener('click', () => {
-            document.getElementById('menu').style.display = 'none';
-            this.isLocked = true; // Fake lock för touch
-        });
+        // Startknappen hanteras nu av setupStartButton globalt
 
         zone.addEventListener('touchstart', (e) => {
             e.preventDefault();
@@ -131,11 +151,11 @@ export class InputManager {
                     this.updateJoystick(touch.clientX, touch.clientY);
                 }
                 
-                // Höger tumme (Kamera rotation) - kolla att det inte rör knapparna? Enkelt: övriga skärmen
+                // Höger tumme (Kamera rotation)
                 if(touch.identifier === this.camTouchId) {
                     const dx = touch.clientX - this.camLastPos.x;
                     const dy = touch.clientY - this.camLastPos.y;
-                    this.rotateCamera(dx * 2, dy * 2); // Öka sensitivietet för touch
+                    this.rotateCamera(dx * 2, dy * 2);
                     this.camLastPos = {x: touch.clientX, y: touch.clientY};
                 }
             }
@@ -143,11 +163,9 @@ export class InputManager {
         
         // Lyssna på touch start på resten av skärmen för att titta runt
         this.domElement.addEventListener('touchstart', (e) => {
-            // Hitta en touch som är på högra halvan
             for(let i=0; i<e.changedTouches.length; i++) {
                 const touch = e.changedTouches[i];
                 if(touch.clientX > window.innerWidth / 2) {
-                    // Starta kamera-roteration
                     if(this.camTouchId === null) {
                         this.camTouchId = touch.identifier;
                         this.camLastPos = {x: touch.clientX, y: touch.clientY};
@@ -162,8 +180,8 @@ export class InputManager {
                 if(touch.identifier === this.joystickId) {
                     this.joystickActive = false;
                     this.joystickId = null;
-                    stick.style.transform = \`translate(0px, 0px)\`;
-                    this.player.input.set(0, 0, 0); // Stanna!
+                    stick.style.transform = 'translate(0px, 0px)';
+                    this.player.input.set(0, 0, 0);
                 }
                 if(touch.identifier === this.camTouchId) {
                     this.camTouchId = null;
@@ -172,10 +190,9 @@ export class InputManager {
         });
         
         // Knappar
-        document.getElementById('btn-jump').addEventListener('touchstart', (e)=>{ e.preventDefault(); this.player.jump(); });
-        // Bygg/Bryt delegater hanteras i main.js genom events, så vi skickar ett custom event
-        document.getElementById('btn-place').addEventListener('touchstart', (e)=>{ e.preventDefault(); window.dispatchEvent(new Event('touch_build')); });
-        document.getElementById('btn-break').addEventListener('touchstart', (e)=>{ e.preventDefault(); window.dispatchEvent(new Event('touch_break')); });
+        document.getElementById('btn-jump').addEventListener('touchstart', (e) => { e.preventDefault(); this.player.jump(); });
+        document.getElementById('btn-place').addEventListener('touchstart', (e) => { e.preventDefault(); window.dispatchEvent(new Event('touch_build')); });
+        document.getElementById('btn-break').addEventListener('touchstart', (e) => { e.preventDefault(); window.dispatchEvent(new Event('touch_break')); });
     }
     
     updateJoystick(x, y) {
@@ -191,9 +208,12 @@ export class InputManager {
             ty = (dy / dist) * maxDist;
         }
         
-        document.getElementById('joystick-stick').style.transform = \`translate(\${tx}px, \${ty}px)\`;
+        const stickEl = document.getElementById('joystick-stick');
+        if (stickEl) {
+            stickEl.style.transform = 'translate(' + tx + 'px, ' + ty + 'px)';
+        }
         
-        // Normaliserad input (-1 till 1), upp är -Z, ner är +Z
+        // Normaliserad input (-1 till 1)
         this.player.input.x = tx / maxDist;
         this.player.input.z = ty / maxDist;
     }
@@ -202,7 +222,6 @@ export class InputManager {
         if(!this.isLocked && !this.isTouch) return;
         
         if(!this.isTouch || !this.joystickActive) {
-            // Skapa vector, W är framåt (-Z)
             let x = 0, z = 0;
             if(this.keys['KeyW']) z -= 1;
             if(this.keys['KeyS']) z += 1;

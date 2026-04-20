@@ -8,171 +8,182 @@ import { BLOCKS } from './textures.js';
 const container = document.getElementById('game-container');
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87CEEB); // Himmel
-scene.fog = new THREE.Fog(0x87CEEB, 20, 50); // Mjuk dimma som matchar himlen (gömmer laddningen av chunks)
+scene.fog = new THREE.Fog(0x87CEEB, 30, 80); // Mjuk dimma
 
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
-const renderer = new THREE.WebGLRenderer({ antialias: false }); // Pixel-perfekt!
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer({ antialias: false });
 renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 container.appendChild(renderer.domElement);
 
 // Ljus
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
 scene.add(ambientLight);
 
-const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
-dirLight.position.set(20, 50, 20);
+const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+dirLight.position.set(20, 100, 20);
 dirLight.castShadow = true;
-// Större shadow map area för chunks
-dirLight.shadow.camera.left = -30;
-dirLight.shadow.camera.right = 30;
-dirLight.shadow.camera.top = 30;
-dirLight.shadow.camera.bottom = -30;
-dirLight.shadow.mapSize.width = 2048;
-dirLight.shadow.mapSize.height = 2048;
+dirLight.shadow.camera.left = -50;
+dirLight.shadow.camera.right = 50;
+dirLight.shadow.camera.top = 50;
+dirLight.shadow.camera.bottom = -50;
+dirLight.shadow.mapSize.width = 1024;
+dirLight.shadow.mapSize.height = 1024;
 scene.add(dirLight);
 
 // Skapa Värld och Spelare
 const world = new World(scene);
 const player = new Player(camera, world);
-const input = new InputManager(camera, renderer.domElement, player, document);
+const input = new InputManager(camera, renderer.domElement, player);
 input.addToScene(scene);
 
 // Highlight för blocket man tittar på
-const highlightGeo = new THREE.BoxGeometry(1.001, 1.001, 1.001);
-const highlightMat = new THREE.MeshBasicMaterial({ color: 0x000000, wireframe: true, transparent: true, opacity: 0.2 });
+const highlightGeo = new THREE.BoxGeometry(1.02, 1.02, 1.02);
+const highlightMat = new THREE.MeshBasicMaterial({ color: 0x000000, wireframe: true, transparent: true, opacity: 0.4 });
 const highlightBox = new THREE.Mesh(highlightGeo, highlightMat);
 scene.add(highlightBox);
 
+// Mobs (Snälla djur)
+const mobs = [];
+function createMob(x, y, z) {
+    const group = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.6, 1.2), new THREE.MeshLambertMaterial({ color: Math.random() > 0.5 ? 0xffffff : 0x795548 }));
+    body.position.y = 0.3;
+    body.castShadow = true;
+    group.add(body);
+    
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), body.material);
+    head.position.set(0, 0.6, 0.7);
+    group.add(head);
+    
+    group.position.set(x, y, z);
+    scene.add(group);
+    
+    mobs.push({
+        mesh: group,
+        velocity: new THREE.Vector3(),
+        nextMove: 0,
+        phase: Math.random() * Math.PI * 2
+    });
+}
+
+// Skapa några start-djur
+for(let i=0; i<10; i++) createMob(Math.random()*30-15, 20, Math.random()*30-15);
+
 // Inventory System
 let currentBlockType = BLOCKS.GRASS;
-document.querySelectorAll('.slot').forEach(slot => {
-    slot.addEventListener('click', (e) => {
+const blockChoices = [BLOCKS.GRASS, BLOCKS.DIRT, BLOCKS.STONE, BLOCKS.WOOD, BLOCKS.PLANKS];
+document.querySelectorAll('.slot').forEach((slot, i) => {
+    slot.dataset.type = blockChoices[i];
+    slot.addEventListener('click', () => {
         document.querySelectorAll('.slot').forEach(s => s.classList.remove('active'));
         slot.classList.add('active');
-        currentBlockType = parseInt(slot.dataset.type);
+        currentBlockType = blockChoices[i];
     });
 });
+window.addEventListener('block_select', (e) => { currentBlockType = e.detail; });
 
-// UI Eventlyssnare för Start
-document.getElementById('btn-start').addEventListener('click', () => {
-    if(!input.isTouch) {
-        renderer.domElement.requestPointerLock();
-    }
-});
-
-// Interaction (Bygga / Bryta)
-const raycaster = new THREE.Raycaster();
-raycaster.far = 8; // Räckvidd
-const center = new THREE.Vector2(0, 0);
-
-function getTargetBlock() {
-    raycaster.setFromCamera(center, camera);
+// Voxel Raycast (DDA)
+function voxelRaycast(origin, direction, maxDist) {
+    const dx = direction.x, dy = direction.y, dz = direction.z;
+    let x = Math.floor(origin.x), y = Math.floor(origin.y), z = Math.floor(origin.z);
+    const stepX = dx > 0 ? 1 : -1, stepY = dy > 0 ? 1 : -1, stepZ = dz > 0 ? 1 : -1;
+    const tDeltaX = Math.abs(1 / dx), tDeltaY = Math.abs(1 / dy), tDeltaZ = Math.abs(1 / dz);
+    let tMaxX = dx > 0 ? (x + 1 - origin.x) * tDeltaX : (origin.x - x) * tDeltaX;
+    let tMaxY = dy > 0 ? (y + 1 - origin.y) * tDeltaY : (origin.y - y) * tDeltaY;
+    let tMaxZ = dz > 0 ? (z + 1 - origin.z) * tDeltaZ : (origin.z - z) * tDeltaZ;
     
-    // Testa raycast mot alla meshes i scenen
-    const intersects = raycaster.intersectObjects(scene.children);
-    
-    for (let i = 0; i < intersects.length; i++) {
-        // Ignorera Highlight-boxen
-        if (intersects[i].object === highlightBox) continue;
-        
-        // Hitta den första InstancedMeshen
-        if (intersects[i].object.isInstancedMesh) {
-            return intersects[i];
+    let prevX = x, prevY = y, prevZ = z;
+    let dist = 0;
+    while (dist < maxDist) {
+        const block = world.getBlock(x, y, z);
+        if (block !== BLOCKS.AIR && block !== BLOCKS.WATER && block !== BLOCKS.CLOUD) {
+            return { x, y, z, block, prevX, prevY, prevZ };
+        }
+        prevX = x; prevY = y; prevZ = z;
+        if (tMaxX < tMaxY) {
+            if (tMaxX < tMaxZ) { x += stepX; dist = tMaxX; tMaxX += tDeltaX; }
+            else { z += stepZ; dist = tMaxZ; tMaxZ += tDeltaZ; }
+        } else {
+            if (tMaxY < tMaxZ) { y += stepY; dist = tMaxY; tMaxY += tDeltaY; }
+            else { z += stepZ; dist = tMaxZ; tMaxZ += tDeltaZ; }
         }
     }
     return null;
 }
 
-function handleInteract(action) { // action = 'build' | 'break'
+function handleInteract(action) {
     if(!input.isLocked && !input.isTouch) return;
-    
-    const hit = getTargetBlock();
+    const hit = voxelRaycast(camera.getWorldPosition(new THREE.Vector3()), camera.getWorldDirection(new THREE.Vector3()), 8);
     if(hit) {
-        const obj = hit.object;
-        const instanceId = hit.instanceId;
-        
-        // Hämta positionen för just denna instansen
-        const matrix = new THREE.Matrix4();
-        obj.getMatrixAt(instanceId, matrix);
-        const position = new THREE.Vector3();
-        position.setFromMatrixPosition(matrix);
-        
-        let targetX = Math.round(position.x);
-        let targetY = Math.round(position.y);
-        let targetZ = Math.round(position.z);
-        
         if (action === 'break') {
-            world.setBlock(targetX, targetY, targetZ, BLOCKS.AIR);
+            world.setBlock(hit.x, hit.y, hit.z, BLOCKS.AIR);
         } else if (action === 'build') {
-            // Lägg till block längs normalen
-            targetX += Math.round(hit.face.normal.x);
-            targetY += Math.round(hit.face.normal.y);
-            targetZ += Math.round(hit.face.normal.z);
-            
-            // Säkerställ att man inte bygger inuti sig själv
-            const px = Math.floor(player.position.x);
-            const py = Math.floor(player.position.y);
-            const pz = Math.floor(player.position.z);
-            
-            // Lite slarvig AABB - kolla om kuben är där spelaren är
-            const distSq = (px-targetX)**2 + (py-targetY)**2 + (pz-targetZ)**2;
-            if(distSq > 1 || (py !== targetY && py+1 !== targetY)) {
-                world.setBlock(targetX, targetY, targetZ, currentBlockType);
+            const px = Math.floor(player.position.x), py = Math.floor(player.position.y), pz = Math.floor(player.position.z);
+            if(!(hit.prevX === px && hit.prevZ === pz && (hit.prevY === py || hit.prevY === py + 1))) {
+                world.setBlock(hit.prevX, hit.prevY, hit.prevZ, currentBlockType);
             }
         }
     }
 }
 
-// Mus-händelser
 window.addEventListener('mousedown', (e) => {
     if(!input.isLocked) return;
-    if(e.button === 0) handleInteract('break'); // Vänsterklick
-    if(e.button === 2) handleInteract('build'); // Högerklick
+    if(e.button === 0) handleInteract('break');
+    if(e.button === 2) handleInteract('build');
 });
-window.addEventListener('contextmenu', e => e.preventDefault()); // Förhindra meny vid högerklick
-
-// Touch-händelser från knapparna
+window.addEventListener('contextmenu', e => e.preventDefault());
 window.addEventListener('touch_build', () => handleInteract('build'));
 window.addEventListener('touch_break', () => handleInteract('break'));
 
-// Resize
 window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-// Game Loop
 const clock = new THREE.Clock();
-
 function animate() {
     requestAnimationFrame(animate);
+    const dt = Math.min(clock.getDelta(), 0.1);
     
-    const dt = Math.min(clock.getDelta(), 0.1); // Max delta för att undvika noclip i lagg
-    
-    // Hantera Fysik & Spelare
     world.update(player.position.x, player.position.z);
     input.update();
     player.update(dt);
-    
-    // Följ spelarens position med Input manager
     input.updatePlayerPosition(player.position);
     
-    // Solens/Ljusets rörelse - Uppdatera DirLight till att vara nära spelaren (Skuggor!)
-    dirLight.position.set(player.position.x + 20, player.position.y + 50, player.position.z + 20);
+    dirLight.position.set(player.position.x + 20, player.position.y + 100, player.position.z + 20);
     dirLight.target.position.copy(player.position);
     dirLight.target.updateMatrixWorld();
     
-    // Highlight Block Logic
-    const hit = getTargetBlock();
+    // Update Mobs
+    mobs.forEach(mob => {
+        if (Date.now() > mob.nextMove) {
+            mob.velocity.x = (Math.random() - 0.5) * 1.5;
+            mob.velocity.z = (Math.random() - 0.5) * 1.5;
+            mob.nextMove = Date.now() + 2000 + Math.random() * 3000;
+        }
+        
+        // Gå-animation (hoppa lite)
+        const isMoving = mob.velocity.lengthSq() > 0.01;
+        if (isMoving) {
+            mob.phase += dt * 10;
+            mob.mesh.position.addScaledVector(mob.velocity, dt);
+            mob.mesh.rotation.y = Math.atan2(mob.velocity.x, mob.velocity.z);
+        } else {
+            mob.phase = 0;
+        }
+        
+        // Hitta marken
+        const groundY = world.getSurfaceHeight(mob.mesh.position.x, mob.mesh.position.z);
+        mob.mesh.position.y = (groundY + 1) + Math.abs(Math.sin(mob.phase)) * 0.2;
+    });
+    
+    const hit = voxelRaycast(camera.getWorldPosition(new THREE.Vector3()), camera.getWorldDirection(new THREE.Vector3()), 8);
     if(hit && (input.isLocked || input.isTouch)) {
-        const matrix = new THREE.Matrix4();
-        hit.object.getMatrixAt(hit.instanceId, matrix);
-        const position = new THREE.Vector3();
-        position.setFromMatrixPosition(matrix);
-        highlightBox.position.copy(position);
+        highlightBox.position.set(hit.x + 0.5, hit.y + 0.5, hit.z + 0.5);
         highlightBox.visible = true;
     } else {
         highlightBox.visible = false;
@@ -181,15 +192,12 @@ function animate() {
     renderer.render(scene, camera);
 }
 
-// Låt spelaren stå stilla med en första init innan loopen för att förhindra att man faller av kartan direkt
 world.update(player.position.x, player.position.z);
 setTimeout(() => {
-    // Sätt spelaren på högsta blocket direkt!
-    for(let y = Math.floor(player.position.y); y > 0; y--) {
-        if(world.getBlock(Math.floor(player.position.x), y, Math.floor(player.position.z)) !== BLOCKS.AIR) {
-            player.position.y = y + 1;
-            break;
+    for(let y = 40; y > 0; y--) {
+        if(world.getBlock(Math.floor(player.position.x), y, Math.floor(player.position.z)) !== BLOCKS.AIR && world.getBlock(Math.floor(player.position.x), y, Math.floor(player.position.z)) !== BLOCKS.WATER) {
+            player.position.y = y + 1; break;
         }
     }
     animate();
-}, 200); // Låt världen fyllas
+}, 200);
