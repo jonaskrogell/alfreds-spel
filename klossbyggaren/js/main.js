@@ -28,12 +28,9 @@ scene.add(ambientLight);
 const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
 dirLight.position.set(20, 100, 20);
 dirLight.castShadow = true;
-dirLight.shadow.camera.left = -50;
-dirLight.shadow.camera.right = 50;
-dirLight.shadow.camera.top = 50;
-dirLight.shadow.camera.bottom = -50;
-dirLight.shadow.mapSize.width = 1024;
-dirLight.shadow.mapSize.height = 1024;
+dirLight.shadow.camera.left = -50; dirLight.shadow.camera.right = 50;
+dirLight.shadow.camera.top = 50; dirLight.shadow.camera.bottom = -50;
+dirLight.shadow.mapSize.width = 1024; dirLight.shadow.mapSize.height = 1024;
 scene.add(dirLight);
 
 // Värld och Spelare
@@ -51,56 +48,46 @@ const mobs = [];
 function createMob(x, y, z) {
     const color = Math.random() > 0.5 ? 0xffffff : 0x795548;
     const group = new THREE.Group();
-    
-    // Body
     const body = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.6, 1.2), new THREE.MeshLambertMaterial({ color }));
     body.position.y = 0.3; body.castShadow = true;
     group.add(body);
-    
-    // Head
-    const head = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), new THREE.MeshLambertMaterial({ color })); // Samma färg
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), new THREE.MeshLambertMaterial({ color }));
     head.position.set(0, 0.6, 0.75);
     group.add(head);
-    
-    // Eyes
     const eyeMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
     const eyeGeo = new THREE.BoxGeometry(0.1, 0.1, 0.1);
-    const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
-    leftEye.position.set(0.15, 0.7, 1.0);
-    group.add(leftEye);
-    const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
-    rightEye.position.set(-0.15, 0.7, 1.0);
-    group.add(rightEye);
-    
-    // Mouth (Mulen)
-    const mouth = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.1, 0.1), eyeMat);
-    mouth.position.set(0, 0.55, 1.0);
-    group.add(mouth);
-    
+    const leftEye = new THREE.Mesh(eyeGeo, eyeMat); leftEye.position.set(0.15, 0.7, 1.0); group.add(leftEye);
+    const rightEye = new THREE.Mesh(eyeGeo, eyeMat); rightEye.position.set(-0.15, 0.7, 1.0); group.add(rightEye);
+    const mouth = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.1, 0.1), eyeMat); mouth.position.set(0, 0.55, 1.0); group.add(mouth);
     group.position.set(x, y, z);
     scene.add(group);
-    mobs.push({ mesh: group, velocity: new THREE.Vector3(), nextMove: 0, phase: Math.random()*Math.PI*2, nextSound: Date.now() + Math.random()*20000 });
+    mobs.push({ mesh: group, velocity: new THREE.Vector3(), nextMove: 0, phase: Math.random()*Math.PI*2 });
 }
-
-// Sällsyntare djur (bara 6 totalt vid start)
 for(let i=0; i<6; i++) createMob(Math.random()*100-50, 40, Math.random()*100-50);
 
-// Inventory
+// Inventory (Nu med Sand och Glas!)
 let currentBlockType = BLOCKS.GRASS;
-const blockChoices = [BLOCKS.GRASS, BLOCKS.DIRT, BLOCKS.STONE, BLOCKS.WOOD, BLOCKS.PLANKS];
-document.querySelectorAll('.slot').forEach((slot, i) => {
-    slot.dataset.type = blockChoices[i];
+const blockChoices = [BLOCKS.GRASS, BLOCKS.DIRT, BLOCKS.SAND, BLOCKS.STONE, BLOCKS.WOOD, BLOCKS.PLANKS, BLOCKS.GLASS];
+const slotsContainer = document.querySelector('.inventory');
+slotsContainer.innerHTML = ''; // Rensa gamla slots
+blockChoices.forEach((type, i) => {
+    const slot = document.createElement('div');
+    slot.className = 'slot' + (i === 0 ? ' active' : '');
+    slot.dataset.type = type;
+    slot.innerHTML = `<span>${Object.keys(BLOCKS).find(k => BLOCKS[k] === type).charAt(0)}</span>`;
+    slotsContainer.appendChild(slot);
     slot.addEventListener('click', () => {
         document.querySelectorAll('.slot').forEach(s => s.classList.remove('active'));
         slot.classList.add('active');
-        currentBlockType = blockChoices[i];
+        currentBlockType = type;
     });
 });
-window.addEventListener('block_select', (e) => { currentBlockType = e.detail; });
-
-document.getElementById('btn-start').addEventListener('click', () => {
-    audio.init();
+window.addEventListener('block_select', (e) => {
+    const slot = document.querySelector(`.slot[data-type="${e.detail}"]`);
+    if(slot) slot.click();
 });
+
+document.getElementById('btn-start').addEventListener('click', () => { audio.init(); });
 
 function voxelRaycast(origin, direction, maxDist) {
     const dx = direction.x, dy = direction.y, dz = direction.z;
@@ -156,44 +143,32 @@ window.addEventListener('touch_break', () => handleInteract('break'));
 
 window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
 const clock = new THREE.Clock();
 function animate() {
     requestAnimationFrame(animate);
     const dt = Math.min(clock.getDelta(), 0.1);
-    
     world.update(player.position.x, player.position.z);
-    input.update();
-    player.update(dt);
-    input.updatePlayerPosition(player.position);
-    
+    input.update(); player.update(dt); input.updatePlayerPosition(player.position);
     dirLight.position.set(player.position.x + 20, player.position.y + 100, player.position.z + 20);
-    dirLight.target.position.copy(player.position);
-    dirLight.target.updateMatrixWorld();
-    
+    dirLight.target.position.copy(player.position); dirLight.target.updateMatrixWorld();
     mobs.forEach(mob => {
         if (Date.now() > mob.nextMove) {
-            mob.velocity.x = (Math.random() - 0.5) * 1.0;
-            mob.velocity.z = (Math.random() - 0.5) * 1.0;
-            mob.nextMove = Date.now() + 3000 + Math.random() * 5000;
-        }
-        if (Date.now() > mob.nextSound) {
-            audio.playAnimal();
-            mob.nextSound = Date.now() + 10000 + Math.random() * 30000; // Sällsyntare ljud
+            mob.velocity.x = (Math.random() - 0.5) * 0.8;
+            mob.velocity.z = (Math.random() - 0.5) * 0.8;
+            mob.nextMove = Date.now() + 4000 + Math.random() * 6000;
         }
         const isMoving = mob.velocity.lengthSq() > 0.01;
         if (isMoving) {
-            mob.phase += dt * 8;
+            mob.phase += dt * 6;
             mob.mesh.position.addScaledVector(mob.velocity, dt);
             mob.mesh.rotation.y = Math.atan2(mob.velocity.x, mob.velocity.z);
         } else { mob.phase = 0; }
         const groundY = world.getSurfaceHeight(mob.mesh.position.x, mob.mesh.position.z);
         mob.mesh.position.y = (groundY + 1) + Math.abs(Math.sin(mob.phase)) * 0.2;
     });
-    
     const hit = voxelRaycast(camera.getWorldPosition(new THREE.Vector3()), camera.getWorldDirection(new THREE.Vector3()), 8);
     if(hit && (input.isLocked || input.isTouch)) {
         highlightBox.position.set(hit.x + 0.5, hit.y + 0.5, hit.z + 0.5);
@@ -204,7 +179,7 @@ function animate() {
 
 world.update(player.position.x, player.position.z);
 setTimeout(() => {
-    for(let y = 40; y > 0; y--) {
+    for(let y = 45; y > 0; y--) {
         if(world.getBlock(Math.floor(player.position.x), y, Math.floor(player.position.z)) !== BLOCKS.AIR && world.getBlock(Math.floor(player.position.x), y, Math.floor(player.position.z)) !== BLOCKS.WATER) {
             player.position.y = y + 1; break;
         }

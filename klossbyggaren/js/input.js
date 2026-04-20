@@ -221,6 +221,11 @@ export class InputManager {
     update() {
         if(!this.isLocked && !this.isTouch) return;
         
+        // Track jump button state for swimming
+        const jumpKey = this.keys['Space'];
+        // På touch används btn-jump som vi kan kolla status på
+        this.player.input.y = jumpKey ? 1 : 0;
+
         if(!this.isTouch || !this.joystickActive) {
             let x = 0, z = 0;
             if(this.keys['KeyW']) z -= 1;
