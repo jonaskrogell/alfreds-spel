@@ -19,8 +19,8 @@ export class Player {
         
         this.speed = 5.0;
         this.waterSpeed = 2.5;
-        this.jumpForce = 7.5;
-        this.gravity = 22.0;
+        this.jumpForce = 9.0; // Tidigare 7.5
+        this.gravity = 25.0; // Tidigare 22.0
         
         this.input = new THREE.Vector3();
         this.stepTimer = 0;

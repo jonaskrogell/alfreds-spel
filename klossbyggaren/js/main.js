@@ -12,7 +12,7 @@ const audio = new AudioManager();
 const container = document.getElementById('game-container');
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87CEEB);
-scene.fog = new THREE.Fog(0x87CEEB, 30, 80);
+scene.fog = new THREE.Fog(0x87CEEB, 40, 100);
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: false });
@@ -49,18 +49,41 @@ scene.add(highlightBox);
 
 const mobs = [];
 function createMob(x, y, z) {
+    const color = Math.random() > 0.5 ? 0xffffff : 0x795548;
     const group = new THREE.Group();
-    const body = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.6, 1.2), new THREE.MeshLambertMaterial({ color: Math.random() > 0.5 ? 0xffffff : 0x795548 }));
+    
+    // Body
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.6, 1.2), new THREE.MeshLambertMaterial({ color }));
     body.position.y = 0.3; body.castShadow = true;
     group.add(body);
-    const head = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), body.material);
-    head.position.set(0, 0.6, 0.7);
+    
+    // Head
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), new THREE.MeshLambertMaterial({ color })); // Samma färg
+    head.position.set(0, 0.6, 0.75);
     group.add(head);
+    
+    // Eyes
+    const eyeMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+    const eyeGeo = new THREE.BoxGeometry(0.1, 0.1, 0.1);
+    const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
+    leftEye.position.set(0.15, 0.7, 1.0);
+    group.add(leftEye);
+    const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
+    rightEye.position.set(-0.15, 0.7, 1.0);
+    group.add(rightEye);
+    
+    // Mouth (Mulen)
+    const mouth = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.1, 0.1), eyeMat);
+    mouth.position.set(0, 0.55, 1.0);
+    group.add(mouth);
+    
     group.position.set(x, y, z);
     scene.add(group);
-    mobs.push({ mesh: group, velocity: new THREE.Vector3(), nextMove: 0, phase: Math.random()*Math.PI*2, nextSound: Date.now() + Math.random()*10000 });
+    mobs.push({ mesh: group, velocity: new THREE.Vector3(), nextMove: 0, phase: Math.random()*Math.PI*2, nextSound: Date.now() + Math.random()*20000 });
 }
-for(let i=0; i<15; i++) createMob(Math.random()*60-30, 20, Math.random()*60-30);
+
+// Sällsyntare djur (bara 6 totalt vid start)
+for(let i=0; i<6; i++) createMob(Math.random()*100-50, 40, Math.random()*100-50);
 
 // Inventory
 let currentBlockType = BLOCKS.GRASS;
@@ -75,7 +98,6 @@ document.querySelectorAll('.slot').forEach((slot, i) => {
 });
 window.addEventListener('block_select', (e) => { currentBlockType = e.detail; });
 
-// Starta ljud på interaktion
 document.getElementById('btn-start').addEventListener('click', () => {
     audio.init();
 });
@@ -154,17 +176,17 @@ function animate() {
     
     mobs.forEach(mob => {
         if (Date.now() > mob.nextMove) {
-            mob.velocity.x = (Math.random() - 0.5) * 1.5;
-            mob.velocity.z = (Math.random() - 0.5) * 1.5;
-            mob.nextMove = Date.now() + 2000 + Math.random() * 3000;
+            mob.velocity.x = (Math.random() - 0.5) * 1.0;
+            mob.velocity.z = (Math.random() - 0.5) * 1.0;
+            mob.nextMove = Date.now() + 3000 + Math.random() * 5000;
         }
         if (Date.now() > mob.nextSound) {
             audio.playAnimal();
-            mob.nextSound = Date.now() + 5000 + Math.random() * 15000;
+            mob.nextSound = Date.now() + 10000 + Math.random() * 30000; // Sällsyntare ljud
         }
         const isMoving = mob.velocity.lengthSq() > 0.01;
         if (isMoving) {
-            mob.phase += dt * 10;
+            mob.phase += dt * 8;
             mob.mesh.position.addScaledVector(mob.velocity, dt);
             mob.mesh.rotation.y = Math.atan2(mob.velocity.x, mob.velocity.z);
         } else { mob.phase = 0; }
