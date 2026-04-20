@@ -143,7 +143,7 @@ export class Player {
         this.velocity.z = (forward.z * (-this.input.z) + right.z * this.input.x) * curSpeed;
 
         // Footsteps sfx
-        if (this.onGround && (this.velocity.x !== 0 || this.velocity.z !== 0)) {
+        if (this.onGround && (Math.abs(this.velocity.x) > 0.01 || Math.abs(this.velocity.z) > 0.01)) {
             this.stepTimer += dt;
             if (this.stepTimer > 0.35) {
                 if (this.audio) this.audio.playStep();

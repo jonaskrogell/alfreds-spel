@@ -114,7 +114,7 @@ scene.add(dirLight);
 // ============================================================
 // Determine seed - load or new
 const savedState = loadGameState();
-const worldSeed = savedState ? savedState.seed : Math.floor(Math.random() * 1e9);
+const worldSeed = savedState?.seed ?? Math.floor(Math.random() * 1e9);
 
 const world = new World(scene, worldSeed);
 const player = new Player(camera, world, audio);
@@ -294,10 +294,12 @@ function voxelRaycast(origin, direction, maxDist) {
     const dx = direction.x, dy = direction.y, dz = direction.z;
     let x = Math.floor(origin.x), y = Math.floor(origin.y), z = Math.floor(origin.z);
     const stepX = dx > 0 ? 1 : -1, stepY = dy > 0 ? 1 : -1, stepZ = dz > 0 ? 1 : -1;
-    const tDeltaX = Math.abs(1 / dx), tDeltaY = Math.abs(1 / dy), tDeltaZ = Math.abs(1 / dz);
-    let tMaxX = dx > 0 ? (x + 1 - origin.x) * tDeltaX : (origin.x - x) * tDeltaX;
-    let tMaxY = dy > 0 ? (y + 1 - origin.y) * tDeltaY : (origin.y - y) * tDeltaY;
-    let tMaxZ = dz > 0 ? (z + 1 - origin.z) * tDeltaZ : (origin.z - z) * tDeltaZ;
+    const tDeltaX = dx !== 0 ? Math.abs(1 / dx) : Infinity;
+    const tDeltaY = dy !== 0 ? Math.abs(1 / dy) : Infinity;
+    const tDeltaZ = dz !== 0 ? Math.abs(1 / dz) : Infinity;
+    let tMaxX = dx !== 0 ? (dx > 0 ? (x + 1 - origin.x) : (origin.x - x)) * tDeltaX : Infinity;
+    let tMaxY = dy !== 0 ? (dy > 0 ? (y + 1 - origin.y) : (origin.y - y)) * tDeltaY : Infinity;
+    let tMaxZ = dz !== 0 ? (dz > 0 ? (z + 1 - origin.z) : (origin.z - z)) * tDeltaZ : Infinity;
     let prevX = x, prevY = y, prevZ = z, dist = 0;
     while (dist < maxDist) {
         const block = world.getBlock(x, y, z);
@@ -329,9 +331,15 @@ function handleInteract(action) {
         playerEdits[hit.x + ',' + hit.y + ',' + hit.z] = BLOCKS.AIR;
         audio.playBreak();
     } else if (action === 'build') {
-        const px = Math.floor(player.position.x), py = Math.floor(player.position.y), pz = Math.floor(player.position.z);
-        // Don't place inside player
-        if (hit.prevX === px && hit.prevZ === pz && (hit.prevY === py || hit.prevY === py + 1)) return;
+        const hw = player.width / 2;
+        const minX = Math.floor(player.position.x - hw);
+        const maxX = Math.floor(player.position.x + hw);
+        const minY = Math.floor(player.position.y);
+        const maxY = Math.floor(player.position.y + player.height);
+        const minZ = Math.floor(player.position.z - hw);
+        const maxZ = Math.floor(player.position.z + hw);
+        // Don't place inside player's full AABB
+        if (hit.prevX >= minX && hit.prevX <= maxX && hit.prevZ >= minZ && hit.prevZ <= maxZ && hit.prevY >= minY && hit.prevY <= maxY) return;
         world.setBlock(hit.prevX, hit.prevY, hit.prevZ, currentBlockType);
         playerEdits[hit.prevX + ',' + hit.prevY + ',' + hit.prevZ] = currentBlockType;
         audio.playPlace();
@@ -378,6 +386,7 @@ function getBlockColor(block) {
         case BLOCKS.CLOUD: return '#ffffff';
         case BLOCKS.FLOWER_RED: return '#E53935';
         case BLOCKS.FLOWER_YELLOW: return '#FFD54F';
+        case BLOCKS.GLASS: return '#ADD8E6';
         default: return '#888888';
     }
 }
@@ -531,7 +540,7 @@ setTimeout(() => {
     if (!savedState) {
         for (let y = 45; y > 0; y--) {
             const b = world.getBlock(Math.floor(player.position.x), y, Math.floor(player.position.z));
-            if (b !== BLOCKS.AIR && b !== BLOCKS.WATER) {
+            if (b !== BLOCKS.AIR && b !== BLOCKS.WATER && b !== BLOCKS.CLOUD) {
                 player.position.y = y + 2;
                 break;
             }

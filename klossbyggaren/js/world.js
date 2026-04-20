@@ -24,6 +24,10 @@ const BIOMES = {
 // Shared noise generators (one per World instance below)
 let noise2D, noise3D;
 
+// Shared geometry for instanced meshes (avoids GPU memory leak)
+const sharedBoxGeo = new THREE.BoxGeometry(1, 1, 1);
+sharedBoxGeo.translate(0.5, 0.5, 0.5);
+
 // ============================================================
 // Chunk class - represents a CHUNK_SIZE x CHUNK_HEIGHT x CHUNK_SIZE piece of world
 // ============================================================
@@ -392,7 +396,7 @@ class Chunk {
 
     generateFineHouse(x, y, z) {
         const w = 7, h = 5, d = 7;
-        if (x + w >= CHUNK_SIZE || z + d >= CHUNK_SIZE || y + h + 4 >= CHUNK_HEIGHT) return;
+        if (x + w > CHUNK_SIZE || z + d > CHUNK_SIZE || y + h + 4 > CHUNK_HEIGHT) return;
 
         for (let dy = 0; dy < h; dy++) {
             for (let dx = 0; dx < w; dx++) {
@@ -472,8 +476,6 @@ class Chunk {
             }
         }
 
-        const boxGeo = new THREE.BoxGeometry(1, 1, 1);
-        boxGeo.translate(0.5, 0.5, 0.5);
         const matrix = new THREE.Matrix4();
         const offsets = {};
 
@@ -481,7 +483,7 @@ class Chunk {
             const blockId = parseInt(bId);
             const mat = BLOCK_MATERIAL[blockId];
             if (!mat) continue; // Unknown block - skip gracefully
-            const mesh = new THREE.InstancedMesh(boxGeo, mat, counts[blockId]);
+            const mesh = new THREE.InstancedMesh(sharedBoxGeo, mat, counts[blockId]);
             mesh.castShadow = blockId !== BLOCKS.WATER && blockId !== BLOCKS.CLOUD && blockId !== BLOCKS.GLASS;
             mesh.receiveShadow = blockId !== BLOCKS.WATER && blockId !== BLOCKS.GLASS;
             mesh.position.set(this.chunkX * CHUNK_SIZE, 0, this.chunkZ * CHUNK_SIZE);
@@ -506,7 +508,9 @@ class Chunk {
 
     destroy() {
         for (const type in this.meshes) {
-            this.scene.remove(this.meshes[type]);
+            const mesh = this.meshes[type];
+            this.scene.remove(mesh);
+            mesh.dispose();
         }
         this.meshes = {};
     }
