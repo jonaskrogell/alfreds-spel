@@ -68,7 +68,7 @@ for(let i=0; i<6; i++) createMob(Math.random()*100-50, 40, Math.random()*100-50)
 // Inventory (Nu med Sand och Glas!)
 let currentBlockType = BLOCKS.GRASS;
 const blockChoices = [BLOCKS.GRASS, BLOCKS.DIRT, BLOCKS.SAND, BLOCKS.STONE, BLOCKS.WOOD, BLOCKS.PLANKS, BLOCKS.GLASS];
-const slotsContainer = document.querySelector('.inventory');
+const slotsContainer = document.getElementById('inventory-ui');
 slotsContainer.innerHTML = ''; // Rensa gamla slots
 blockChoices.forEach((type, i) => {
     const slot = document.createElement('div');

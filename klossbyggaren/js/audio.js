@@ -13,114 +13,62 @@ export class AudioManager {
     playBreak() {
         if (!this.enabled) return;
         const now = this.ctx.currentTime;
-        const noisePath = this.ctx.createBuffer(1, this.ctx.sampleRate * 0.1, this.ctx.sampleRate);
-        const data = noisePath.getChannelData(0);
+        const noise = this.ctx.createBuffer(1, this.ctx.sampleRate * 0.1, this.ctx.sampleRate);
+        const data = noise.getChannelData(0);
         for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
-
-        const bufferSource = this.ctx.createBufferSource();
-        bufferSource.buffer = noisePath;
-
-        const filter = this.ctx.createBiquadFilter();
-        filter.type = 'lowpass';
-        filter.frequency.setValueAtTime(1000, now);
-        filter.frequency.exponentialRampToValueAtTime(100, now + 0.1);
-
-        const gain = this.ctx.createGain();
-        gain.gain.setValueAtTime(0.2, now); // Sänkt något
+        const source = this.ctx.createBufferSource(); source.buffer = noise;
+        const filter = this.ctx.createBiquadFilter(); filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(1000, now); filter.frequency.exponentialRampToValueAtTime(100, now + 0.1);
+        const gain = this.ctx.createGain(); gain.gain.setValueAtTime(0.15, now);
         gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-
-        bufferSource.connect(filter);
-        filter.connect(gain);
-        gain.connect(this.ctx.destination);
-        bufferSource.start();
+        source.connect(filter); filter.connect(gain); gain.connect(this.ctx.destination);
+        source.start();
     }
 
     playPlace() {
         if (!this.enabled) return;
         const now = this.ctx.currentTime;
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
+        const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain();
+        osc.type = 'sine'; osc.frequency.setValueAtTime(150, now);
+        osc.frequency.exponentialRampToValueAtTime(80, now + 0.05);
+        gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+        osc.connect(gain); gain.connect(this.ctx.destination); osc.start(); osc.stop(now + 0.05);
+    }
 
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(200, now);
-        osc.frequency.exponentialRampToValueAtTime(50, now + 0.1);
-
-        gain.gain.setValueAtTime(0.2, now);
-        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-
-        osc.connect(gain);
-        gain.connect(this.ctx.destination);
-        osc.start();
-        osc.stop(now + 0.1);
+    playStep() {
+        if (!this.enabled) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain();
+        osc.type = 'sine'; osc.frequency.setValueAtTime(80, now);
+        gain.gain.setValueAtTime(0.03, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+        osc.connect(gain); gain.connect(this.ctx.destination); osc.start(); osc.stop(now + 0.05);
     }
 
     playJump() {
         if (!this.enabled) return;
         const now = this.ctx.currentTime;
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(150, now);
-        osc.frequency.exponentialRampToValueAtTime(400, now + 0.15);
-
-        gain.gain.setValueAtTime(0.05, now); // Väldigt diskret hoppljud
-        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
-
-        osc.connect(gain);
-        gain.connect(this.ctx.destination);
-        osc.start();
-        osc.stop(now + 0.15);
+        const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain();
+        osc.type = 'triangle'; osc.frequency.setValueAtTime(150, now);
+        osc.frequency.exponentialRampToValueAtTime(300, now + 0.1);
+        gain.gain.setValueAtTime(0.05, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+        osc.connect(gain); gain.connect(this.ctx.destination); osc.start(); osc.stop(now + 0.1);
     }
 
     playSplash() {
         if (!this.enabled) return;
         const now = this.ctx.currentTime;
-        const noisePath = this.ctx.createBuffer(1, this.ctx.sampleRate * 0.2, this.ctx.sampleRate);
-        const data = noisePath.getChannelData(0);
-        for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
-
-        const source = this.ctx.createBufferSource();
-        source.buffer = noisePath;
-
-        const filter = this.ctx.createBiquadFilter();
-        filter.type = 'lowpass';
-        filter.frequency.setValueAtTime(2000, now);
-        filter.frequency.exponentialRampToValueAtTime(400, now + 0.2);
-
-        const gain = this.ctx.createGain();
-        gain.gain.setValueAtTime(0.1, now);
-        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
-
-        source.connect(filter);
-        filter.connect(gain);
-        gain.connect(this.ctx.destination);
+        const noise = this.ctx.createBuffer(1, this.ctx.sampleRate * 0.15, this.ctx.sampleRate);
+        const data = noise.getChannelData(0); for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+        const source = this.ctx.createBufferSource(); source.buffer = noise;
+        const filter = this.ctx.createBiquadFilter(); filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(1500, now); filter.frequency.exponentialRampToValueAtTime(300, now + 0.15);
+        const gain = this.ctx.createGain(); gain.gain.setValueAtTime(0.08, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+        source.connect(filter); filter.connect(gain); gain.connect(this.ctx.destination);
         source.start();
     }
 
     playAnimal() {
-        if (!this.enabled) return;
-        const now = this.ctx.currentTime;
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(80, now); // Lägre ton
-        osc.frequency.linearRampToValueAtTime(100, now + 0.15);
-        osc.frequency.linearRampToValueAtTime(80, now + 0.4);
-
-        gain.gain.setValueAtTime(0.02, now); // Sänkt volym betydligt
-        gain.gain.linearRampToValueAtTime(0.04, now + 0.1);
-        gain.gain.exponentialRampToValueAtTime(0.005, now + 0.5);
-
-        const filter = this.ctx.createBiquadFilter();
-        filter.type = 'lowpass';
-        filter.frequency.value = 400;
-
-        osc.connect(filter);
-        filter.connect(gain);
-        gain.connect(this.ctx.destination);
-        osc.start();
-        osc.stop(now + 0.5);
+        // Helt tyst per användarens önskemål
     }
 }

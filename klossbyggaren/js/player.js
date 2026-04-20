@@ -85,7 +85,7 @@ export class Player {
         if (this.onGround && (velocityX !== 0 || velocityZ !== 0)) {
             this.stepTimer += dt;
             if (this.stepTimer > 0.35) {
-                if (this.audio) this.audio.playPlace(); 
+                if (this.audio) this.audio.playStep(); 
                 this.stepTimer = 0;
             }
         }

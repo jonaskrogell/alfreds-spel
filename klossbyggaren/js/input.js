@@ -18,6 +18,7 @@ export class InputManager {
         this.joystickCenter = {x:0, y:0};
         this.camTouchId = null;
         this.camLastPos = {x:0, y:0};
+        this.isJumpHeld = false;
         
         // Kamera rotation (Pitch = Upp/Ner, Yaw = Vänster/Höger)
         this.yaw = new THREE.Object3D();
@@ -190,7 +191,16 @@ export class InputManager {
         });
         
         // Knappar
-        document.getElementById('btn-jump').addEventListener('touchstart', (e) => { e.preventDefault(); this.player.jump(); });
+        const btnJump = document.getElementById('btn-jump');
+        btnJump.addEventListener('touchstart', (e) => { 
+            e.preventDefault(); 
+            this.isJumpHeld = true;
+            this.player.jump(); 
+        });
+        btnJump.addEventListener('touchend', (e) => { 
+            e.preventDefault(); 
+            this.isJumpHeld = false;
+        });
         document.getElementById('btn-place').addEventListener('touchstart', (e) => { e.preventDefault(); window.dispatchEvent(new Event('touch_build')); });
         document.getElementById('btn-break').addEventListener('touchstart', (e) => { e.preventDefault(); window.dispatchEvent(new Event('touch_break')); });
     }
@@ -223,8 +233,7 @@ export class InputManager {
         
         // Track jump button state for swimming
         const jumpKey = this.keys['Space'];
-        // På touch används btn-jump som vi kan kolla status på
-        this.player.input.y = jumpKey ? 1 : 0;
+        this.player.input.y = (jumpKey || this.isJumpHeld) ? 1 : 0;
 
         if(!this.isTouch || !this.joystickActive) {
             let x = 0, z = 0;

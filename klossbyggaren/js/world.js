@@ -36,12 +36,12 @@ class Chunk {
         const worldZStart = this.chunkZ * CHUNK_SIZE;
 
         const getBiomeInfo = (wx, wz) => {
-            const v = noise2D(wx * 0.003, wz * 0.003); // Långsam variation
-            if (v < -0.4) return { type: 'DESERT', base: 8, var: 3 };
-            if (v < -0.1) return { type: 'ISLANDS', base: 6, var: 8 };
-            if (v < 0.3) return { type: 'PLAINS', base: 12, var: 4 };
-            if (v < 0.6) return { type: 'FOREST', base: 11, var: 6 };
-            return { type: 'MOUNTAINS', base: 10, var: 28 };
+            const v = noise2D(wx * 0.002, wz * 0.002);
+            if (v < -0.4) return { type: 'DESERT', base: 8, var: 4 };
+            if (v < -0.1) return { type: 'ISLANDS', base: 7, var: 8 };
+            if (v < 0.2) return { type: 'PLAINS', base: 12, var: 4 };
+            if (v < 0.5) return { type: 'FOREST', base: 11, var: 7 };
+            return { type: 'MOUNTAINS', base: 10, var: 30 };
         };
 
         for (let x = 0; x < CHUNK_SIZE; x++) {
@@ -55,8 +55,7 @@ class Chunk {
                 
                 // Mycket jämnare terräng i öken och fält
                 if (biome.type === 'DESERT' || biome.type === 'PLAINS') {
-                    const smooth = noise2D(worldX * 0.1, worldZ * 0.1);
-                    height += Math.floor(smooth * 1.5);
+                    height = Math.floor(biome.base + (heightNoise * 2));
                 }
 
                 for (let y = 0; y < CHUNK_HEIGHT; y++) {
@@ -78,10 +77,11 @@ class Chunk {
                     }
                 }
                 
+                // Vegetations-logik
                 const surfaceY = height;
                 if (surfaceY > WATER_LEVEL && this.getBlock(x, surfaceY, z) === BLOCKS.GRASS) {
                     const treeNoise = noise2D(worldX * 0.06, worldZ * 0.06);
-                    const forestDensity = (biome.type === 'FOREST') ? 0.15 : (biome.type === 'MOUNTAINS' ? 0.03 : 0.01);
+                    const forestDensity = (biome.type === 'FOREST') ? 0.2 : (biome.type === 'MOUNTAINS' ? 0.03 : 0.01);
                     if (treeNoise > 0.2 && Math.random() < forestDensity) {
                         this.generateTree(x, surfaceY + 1, z);
                     }
@@ -94,12 +94,16 @@ class Chunk {
         }
 
         // Hus och Byar (Rare)
-        const villageV = noise2D(this.chunkX * 0.1, this.chunkZ * 0.1);
-        if (villageV > 0.8) {
-            const vx = 4 + Math.floor(Math.random() * 4);
-            const vz = 4 + Math.floor(Math.random() * 4);
-            const vy = this.getTopBlockY(vx, vz);
-            if (vy > WATER_LEVEL + 1) this.generateFineHouse(vx, vy + 1, vz);
+        const villageV = noise2D(this.chunkX * 0.05, this.chunkZ * 0.05);
+        if (villageV > 0.75) {
+            // I en by, placera hus oftare
+            const numHouses = Math.floor(Math.random() * 2) + 1;
+            for(let i=0; i<numHouses; i++) {
+                const vx = 4 + Math.floor(Math.random() * 6);
+                const vz = 4 + Math.floor(Math.random() * 6);
+                const vy = this.getTopBlockY(vx, vz);
+                if (vy > WATER_LEVEL + 1) this.generateFineHouse(vx, vy + 1, vz);
+            }
         }
     }
 
@@ -109,14 +113,20 @@ class Chunk {
     }
     
     generateTree(x, y, z) {
-        if (y + 6 >= CHUNK_HEIGHT) return;
         const trunkH = 4 + Math.floor(Math.random() * 2);
-        for (let h = 0; h < trunkH; h++) this.data[this.getIndex(x, y+h, z)] = BLOCKS.WOOD;
+        for (let h = 0; h < trunkH; h++) {
+            if (y+h < CHUNK_HEIGHT) this.data[this.getIndex(x, y+h, z)] = BLOCKS.WOOD;
+        }
         for (let lx = -2; lx <= 2; lx++) {
             for (let lz = -2; lz <= 2; lz++) {
                 for (let ly = trunkH - 2; ly <= trunkH + 1; ly++) {
                     const d = Math.sqrt(lx*lx + lz*lz + (ly-trunkH)*(ly-trunkH));
-                    if (d < 2.5 && this.getBlock(x+lx, y+ly, z+lz) === BLOCKS.AIR) this.data[this.getIndex(x+lx, y+ly, z+lz)] = BLOCKS.LEAVES;
+                    if (d < 2.5) {
+                        const wx = x+lx, wy = y+ly, wz = z+lz;
+                        if (wx >= 0 && wx < CHUNK_SIZE && wy >= 0 && wy < CHUNK_HEIGHT && wz >= 0 && wz < CHUNK_SIZE) {
+                            if (this.getBlock(wx, wy, wz) === BLOCKS.AIR) this.data[this.getIndex(wx, wy, wz)] = BLOCKS.LEAVES;
+                        }
+                    }
                 }
             }
         }
@@ -124,7 +134,9 @@ class Chunk {
 
     generateFineHouse(x, y, z) {
         const w = 7, h = 5, d = 7;
-        if (x + w >= CHUNK_SIZE || z + d >= CHUNK_SIZE || y + h + 3 >= CHUNK_HEIGHT) return;
+        // Bounds check
+        if (x + w >= CHUNK_SIZE || z + d >= CHUNK_SIZE || y + h + 4 >= CHUNK_HEIGHT) return;
+        
         for (let dy = 0; dy < h; dy++) {
             for (let dx = 0; dx < w; dx++) {
                 for (let dz = 0; dz < d; dz++) {
@@ -133,21 +145,31 @@ class Chunk {
                     const isCorner = (dx === 0 || dx === w-1) && (dz === 0 || dz === d-1);
                     const isDoor = (dx === Math.floor(w/2) && dz === 0 && dy < 3);
                     const isWindow = (dy === 2 && ((dx === 0 || dx === w-1) && dz === Math.floor(d/2) || (dz === d-1 && dx === 2 || dx === w-3)));
-                    if (isFloor) this.data[this.getIndex(x + dx, y + dy, z + dz)] = BLOCKS.STONE;
-                    else if (isCorner) this.data[this.getIndex(x + dx, y + dy, z + dz)] = BLOCKS.WOOD;
+                    
+                    const blockX = x + dx;
+                    const blockY = y + dy;
+                    const blockZ = z + dz;
+                    
+                    if (isFloor) this.data[this.getIndex(blockX, blockY, blockZ)] = BLOCKS.STONE;
+                    else if (isCorner) this.data[this.getIndex(blockX, blockY, blockZ)] = BLOCKS.WOOD;
                     else if (isWall) {
-                        if (isDoor) this.data[this.getIndex(x+dx, y+dy, z+dz)] = BLOCKS.AIR;
-                        else if (isWindow) this.data[this.getIndex(x+dx, y+dy, z+dz)] = BLOCKS.GLASS;
-                        else this.data[this.getIndex(x + dx, y + dy, z + dz)] = BLOCKS.PLANKS;
+                        if (isDoor) this.data[this.getIndex(blockX, blockY, blockZ)] = BLOCKS.AIR;
+                        else if (isWindow) this.data[this.getIndex(blockX, blockY, blockZ)] = BLOCKS.GLASS;
+                        else this.data[this.getIndex(blockX, blockY, blockZ)] = BLOCKS.PLANKS;
                     }
                 }
             }
         }
         // Pitched Roof
         for (let ry = 0; ry < 4; ry++) {
-            for (let rx = ry; rx < w - ry; rx++) {
-                for (let rz = ry; rz < d - ry; rz++) {
-                    this.data[this.getIndex(x + rx, y + h + ry, z + rz)] = BLOCKS.WOOD;
+            for (let rx = ry - 1; rx < w - ry + 1; rx++) {
+                for (let rz = ry - 1; rz < d - ry + 1; rz++) {
+                    const blockX = x + rx;
+                    const blockY = y + h + ry;
+                    const blockZ = z + rz;
+                    if (blockX >= 0 && blockX < CHUNK_SIZE && blockY < CHUNK_HEIGHT && blockZ >= 0 && blockZ < CHUNK_SIZE) {
+                        this.data[this.getIndex(blockX, blockY, blockZ)] = BLOCKS.WOOD;
+                    }
                 }
             }
         }
