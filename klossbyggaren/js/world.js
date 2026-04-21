@@ -26,8 +26,8 @@ function createSimpleNoise(seed) {
 let createNoise2D = (rand) => createSimpleNoise(rand() * 1000);
 let createNoise3D = (rand) => (x, y, z) => createSimpleNoise(rand() * 1000)(x + z, y);
 
-// Attempt to load external noise library
-import('https://cdn.skypack.dev/simplex-noise@4.0.1').then(module => {
+// Preload noise library before world construction
+const noiseReady = import('https://cdn.skypack.dev/simplex-noise@4.0.1').then(module => {
     createNoise2D = module.createNoise2D;
     createNoise3D = module.createNoise3D;
 }).catch(() => console.warn('Simplex-noise fallback active.'));
@@ -570,13 +570,13 @@ export class World {
         this.scene = scene;
         this.chunks = {};
         this.seed = seed || Math.floor(Math.random() * 1e9);
-        // Initialize shared noise with a deterministic seed-like behaviour
-        // simplex-noise's createNoise2D accepts a random function; we derive one from the seed
-        const rand = mulberry32(this.seed);
-        const n2 = createNoise2D(rand);
-        const n3 = createNoise3D(rand);
-        if (typeof n2 === 'function') noise2D = n2;
-        if (typeof n3 === 'function') noise3D = n3;
+        this.ready = noiseReady.then(() => {
+            const rand = mulberry32(this.seed);
+            const n2 = createNoise2D(rand);
+            const n3 = createNoise3D(rand);
+            if (typeof n2 === 'function') noise2D = n2;
+            if (typeof n3 === 'function') noise3D = n3;
+        });
     }
 
     getChunkKey(cx, cz) { return cx + ',' + cz; }
@@ -584,7 +584,8 @@ export class World {
     update(playerX, playerZ) {
         const pCx = Math.floor(playerX / CHUNK_SIZE);
         const pCz = Math.floor(playerZ / CHUNK_SIZE);
-        const renderDistance = 6;
+        const isMobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || navigator.maxTouchPoints > 0;
+        const renderDistance = isMobile ? 4 : 6;
 
         // Load chunks within render distance
         for (let x = -renderDistance; x <= renderDistance; x++) {

@@ -6,6 +6,8 @@ import { InputManager } from './input.js';
 import { BLOCKS, SOLID_BLOCKS } from './textures.js';
 import { AudioManager } from './audio.js';
 
+const isMobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || navigator.maxTouchPoints > 0;
+
 // ============================================================
 // Save / Load System (localStorage with cookie fallback)
 // ============================================================
@@ -92,11 +94,16 @@ scene.background = new THREE.Color(0x87CEEB);
 scene.fog = new THREE.Fog(0x87CEEB, 80, 200);
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-const renderer = new THREE.WebGLRenderer({ antialias: false });
+const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2));
+if (isMobile) {
+    renderer.shadowMap.enabled = false;
+    scene.fog = new THREE.Fog(0x87CEEB, 60, 140);
+} else {
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+}
 container.appendChild(renderer.domElement);
 
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
@@ -104,10 +111,12 @@ scene.add(ambientLight);
 
 const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
 dirLight.position.set(20, 100, 20);
-dirLight.castShadow = true;
-dirLight.shadow.camera.left = -50; dirLight.shadow.camera.right = 50;
-dirLight.shadow.camera.top = 50; dirLight.shadow.camera.bottom = -50;
-dirLight.shadow.mapSize.width = 1024; dirLight.shadow.mapSize.height = 1024;
+if (!isMobile) {
+    dirLight.castShadow = true;
+    dirLight.shadow.camera.left = -50; dirLight.shadow.camera.right = 50;
+    dirLight.shadow.camera.top = 50; dirLight.shadow.camera.bottom = -50;
+    dirLight.shadow.mapSize.width = 1024; dirLight.shadow.mapSize.height = 1024;
+}
 scene.add(dirLight);
 
 // ============================================================
@@ -118,6 +127,7 @@ const savedState = loadGameState();
 const worldSeed = savedState?.seed ?? Math.floor(Math.random() * 1e9);
 
 const world = new World(scene, worldSeed);
+await world.ready;
 const player = new Player(camera, world, audio);
 const input = new InputManager(camera, renderer.domElement, player);
 input.addToScene(scene);
@@ -207,8 +217,10 @@ function createBird(x, y, z) {
 // Spawn a variety of mobs around spawn - reduced counts for better start
 function spawnInitialMobs() {
     const types = ['sheep', 'cow', 'pig', 'critter'];
-    // Land animals: 10 spread out
-    for (let i = 0; i < 10; i++) {
+    const landCount = isMobile ? 5 : 10;
+    const fishCount = isMobile ? 3 : 6;
+    const birdCount = isMobile ? 1 : 3;
+    for (let i = 0; i < landCount; i++) {
         const angle = Math.random() * Math.PI * 2;
         const dist = 10 + Math.random() * 40;
         const x = Math.cos(angle) * dist + player.position.x;
@@ -217,7 +229,7 @@ function spawnInitialMobs() {
         if (y > WATER_LEVEL) createLandMob(x, y, z, types[Math.floor(Math.random() * types.length)]);
     }
     // Fish: 6 in nearby water
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < fishCount; i++) {
         const angle = Math.random() * Math.PI * 2;
         const dist = 10 + Math.random() * 50;
         const x = Math.cos(angle) * dist + player.position.x;
@@ -225,7 +237,7 @@ function spawnInitialMobs() {
         if (world.getBlock(x, 9, z) === BLOCKS.WATER) createFish(x, 9.0, z);
     }
     // Birds: 3 flying around
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < birdCount; i++) {
         const angle = Math.random() * Math.PI * 2;
         const dist = 20 + Math.random() * 40;
         const x = Math.cos(angle) * dist + player.position.x;
@@ -252,7 +264,8 @@ function updateDynamicMobs(dt) {
     }
 
     // Spawn new mobs if count is low
-    if (mobs.length < 30 && now - lastMobSpawn > 3000) {
+    const maxMobs = isMobile ? 15 : 30;
+    if (mobs.length < maxMobs && now - lastMobSpawn > 3000) {
         lastMobSpawn = now;
         const angle = Math.random() * Math.PI * 2;
         const dist = 70 + Math.random() * 30; // spawn at distance
@@ -499,7 +512,9 @@ function animate() {
     const dt = Math.min(clock.getDelta(), 0.1);
 
     // Throttle world updates - only update every 2 frames to reduce CPU load
-    if (Math.floor(performance.now() / 16) % 2 === 0) {
+    const frameN = Math.floor(performance.now() / 16);
+    const throttleRate = isMobile ? 3 : 2;
+    if (frameN % throttleRate === 0) {
         world.update(player.position.x, player.position.z);
     }
     input.update();
@@ -507,7 +522,8 @@ function animate() {
     input.updatePlayerPosition(player.position);
 
     mmFrame++;
-    if (mmFrame % 30 === 0) updateMinimap(); // Throttle from 10 to 30 frames
+    const mmThrottle = isMobile ? 60 : 30;
+    if (mmFrame % mmThrottle === 0) updateMinimap();
 
     // Update sun to follow player
     dirLight.position.set(player.position.x + 20, player.position.y + 100, player.position.z + 20);
@@ -515,7 +531,8 @@ function animate() {
     dirLight.target.updateMatrixWorld();
 
     // Animate mobs - reduce update frequency to every 2 frames
-    if (Math.floor(performance.now() / 16) % 2 === 0) {
+    const mobThrottle = isMobile ? 4 : 2;
+    if (frameN % mobThrottle === 0) {
         updateDynamicMobs(dt);
         mobs.forEach(mob => {
             if (mob.kind === 'land') {

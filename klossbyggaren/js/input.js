@@ -184,7 +184,7 @@ export class InputManager {
                     this.camLastPos = { x: touch.clientX, y: touch.clientY };
                 }
             }
-        });
+        }, { passive: true });
 
         window.addEventListener('touchend', (e) => {
             for (let i = 0; i < e.changedTouches.length; i++) {
@@ -215,8 +215,54 @@ export class InputManager {
 
         const btnBreak = document.getElementById('btn-break');
         if (btnBreak) btnBreak.addEventListener('touchstart', (e) => { e.preventDefault(); window.dispatchEvent(new Event('touch_break')); });
+
+        this.setupTapToInteract();
     }
 
+    setupTapToInteract() {
+        let tapStartTime = 0;
+        let tapStartPos = { x: 0, y: 0 };
+        let tapTouchId = null;
+
+        this.domElement.addEventListener('touchstart', (e) => {
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                const touch = e.changedTouches[i];
+                if (touch.clientX <= window.innerWidth / 2) continue;
+                if (this.camTouchId !== null && touch.identifier !== this.camTouchId) continue;
+                tapStartTime = Date.now();
+                tapStartPos = { x: touch.clientX, y: touch.clientY };
+                tapTouchId = touch.identifier;
+            }
+        }, { passive: true });
+
+        this.domElement.addEventListener('touchmove', (e) => {
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                const touch = e.changedTouches[i];
+                if (touch.identifier !== tapTouchId) continue;
+                const dx = touch.clientX - tapStartPos.x;
+                const dy = touch.clientY - tapStartPos.y;
+                if (Math.sqrt(dx * dx + dy * dy) > 15) {
+                    tapTouchId = null;
+                }
+            }
+        }, { passive: true });
+
+        this.domElement.addEventListener('touchend', (e) => {
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                const touch = e.changedTouches[i];
+                if (touch.identifier !== tapTouchId) continue;
+                const elapsed = Date.now() - tapStartTime;
+                if (elapsed < 300) {
+                    window.dispatchEvent(new Event('touch_build'));
+                }
+                tapTouchId = null;
+            }
+        }, { passive: true });
+
+        this.domElement.addEventListener('touchcancel', () => {
+            tapTouchId = null;
+        }, { passive: true });
+    }
     updateJoystick(x, y) {
         const dx = x - this.joystickCenter.x;
         const dy = y - this.joystickCenter.y;
