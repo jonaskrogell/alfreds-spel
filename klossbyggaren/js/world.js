@@ -1,6 +1,18 @@
 import * as THREE from 'three';
 import { materials, BLOCKS, BLOCK_MATERIAL } from './textures.js';
 
+// Deterministic RNG from seed (for noise)
+function mulberry32(seed) {
+    let t = seed >>> 0;
+    return function () {
+        t += 0x6D2B79F5;
+        let r = t;
+        r = Math.imul(r ^ (r >>> 15), r | 1);
+        r ^= r + Math.imul(r ^ (r >>> 7), r | 61);
+        return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+    };
+}
+
 // Smooth deterministic noise (Lcg-based with interpolation)
 function createSimpleNoise(seed) {
     const table = new Float32Array(256);
@@ -637,22 +649,6 @@ export class World {
         // We implement edits via a separate map stored in save data; simplest is to record changes
         return this.edits || {};
     }
-}
-
-// ============================================================
-// Utilities
-// ============================================================
-
-// Deterministic RNG from seed (for noise)
-function mulberry32(seed) {
-    let t = seed >>> 0;
-    return function () {
-        t += 0x6D2B79F5;
-        let r = t;
-        r = Math.imul(r ^ (r >>> 15), r | 1);
-        r ^= r + Math.imul(r ^ (r >>> 7), r | 61);
-        return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
-    };
 }
 
 // Export constants used elsewhere

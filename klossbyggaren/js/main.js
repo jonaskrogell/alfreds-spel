@@ -426,7 +426,7 @@ const mmCtx = minimapCanvas.getContext('2d');
 let mmFrame = 0;
 
 // Range is now larger - shows much more of the map
-const MINIMAP_RANGE = 100; // was 40 - now shows 200x200 area
+const MINIMAP_RANGE = 40; // was 100 - reduced to eliminate freezes
 
 function getBlockColor(block) {
     switch (block) {
@@ -522,7 +522,7 @@ function animate() {
     input.updatePlayerPosition(player.position);
 
     mmFrame++;
-    const mmThrottle = isMobile ? 60 : 30;
+    const mmThrottle = isMobile ? 120 : 180;
     if (mmFrame % mmThrottle === 0) updateMinimap();
 
     // Update sun to follow player
